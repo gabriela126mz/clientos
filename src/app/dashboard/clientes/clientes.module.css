@@ -1,70 +1,7 @@
-/* QUICK ADD */
-.quickAdd {
-  background: var(--white);
-  border: 2px dashed var(--greyL);
-  border-radius: var(--r2);
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.1rem;
-  transition: all .15s;
-}
-
-.quickAdd:focus-within {
-  border-color: var(--ink);
-  border-style: solid;
-  box-shadow: var(--sh2);
-}
-
-.qaLabel {
-  font-family: 'Syne', sans-serif;
-  font-size: .78rem;
-  font-weight: 700;
-  color: var(--grey);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  margin-bottom: .75rem;
-}
-
-.qaRow {
-  display: grid;
-  grid-template-columns: 1fr 180px 160px auto;
-  gap: .65rem;
-  align-items: end;
-}
-
-.qaField { display: flex; flex-direction: column; gap: .28rem; }
-
-.qaField label {
-  font-size: .68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: var(--ink2);
-}
-
-.qaField input,
-.qaField select {
-  padding: .62rem .75rem;
-  background: var(--bg);
-  border: 1.5px solid var(--bg3);
-  border-radius: var(--r);
-  font-size: .875rem;
-  transition: all .15s;
-  color: var(--ink);
-}
-
-.qaField input:focus,
-.qaField select:focus {
-  outline: none;
-  border-color: var(--ink);
-  background: var(--white);
-  box-shadow: 0 0 0 3px rgba(10,15,20,.06);
-}
-
-.qaHint { font-size: .72rem; color: var(--grey); margin-top: .5rem; }
-
 /* PIPELINE BAR */
 .pipeBar {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   background: var(--white);
   border: 1px solid var(--bg3);
   border-radius: var(--r2);
@@ -73,7 +10,6 @@
 }
 
 .ps {
-  flex: 1;
   padding: .8rem .9rem;
   border-right: 1px solid var(--bg2);
   cursor: pointer;
@@ -102,19 +38,28 @@
 }
 
 .all { color: var(--ink); }
-.n   { color: #2563eb; }
-.c   { color: #ea580c; }
-.ci  { color: #ca8a04; }
-.co  { color: #16a34a; }
+.n { color: #2563eb; }
+.c { color: #ea580c; }
+.ci { color: #ca8a04; }
+.co { color: #16a34a; }
 
 /* SEARCH */
-.searchRow { display: flex; gap: .65rem; margin-bottom: 1rem; }
+.searchRow {
+  display: flex;
+  gap: .65rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
 
-.searchWrap { position: relative; flex: 1; }
+.searchWrap {
+  position: relative;
+  flex: 1;
+}
 
 .searchWrap svg {
   position: absolute;
-  left: .7rem; top: 50%;
+  left: .7rem;
+  top: 50%;
   transform: translateY(-50%);
   color: var(--grey);
   pointer-events: none;
@@ -138,7 +83,8 @@
 
 /* AVATAR */
 .ccAv {
-  width: 30px; height: 30px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--bg2);
   display: grid;
@@ -150,31 +96,10 @@
   flex-shrink: 0;
 }
 
-/* ESTADO PILLS */
-.epills { display: flex; gap: .25rem; flex-wrap: wrap; }
-
-.epill {
-  padding: .18rem .5rem;
-  border-radius: 20px;
-  font-size: .64rem;
-  font-weight: 700;
-  border: 1.5px solid transparent;
-  transition: all .12s;
-  cursor: pointer;
-  font-family: inherit;
-  opacity: .38;
-}
-
-.nuevo      { background: var(--blue2);   color: #1d4ed8; }
-.contactado { background: var(--orange2); color: #c2410c; }
-.cita       { background: var(--gold2);   color: #92400e; }
-.completado { background: var(--green2);  color: #166534; }
-.cur        { opacity: 1; box-shadow: 0 0 0 1.5px currentColor; }
-.epill:hover { opacity: 1; }
-
 /* ICON BUTTONS */
 .icoBtn {
-  width: 28px; height: 28px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--r);
   display: grid;
   place-items: center;
@@ -186,13 +111,20 @@
   font-size: .85rem;
 }
 
-.icoBtn:hover { background: var(--bg2); color: var(--ink); }
-.del:hover    { background: var(--red2) !important; color: var(--red) !important; }
+.icoBtn:hover {
+  background: var(--bg2);
+  color: var(--ink);
+}
 
+.del:hover {
+  background: var(--red2) !important;
+  color: var(--red) !important;
+}
 
+/* CARDS */
 .ccGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
 }
 
@@ -292,4 +224,137 @@
   background: #dcfce7;
   color: #166534;
   text-decoration: none;
+}
+
+/* MODAL NUEVO CLIENTE */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 20, .45);
+  display: grid;
+  place-items: center;
+  z-index: 999;
+  padding: 1rem;
+}
+
+.modalBox {
+  width: min(720px, 100%);
+  background: var(--white);
+  border-radius: var(--r2);
+  box-shadow: 0 24px 80px rgba(10,15,20,.25);
+  padding: 1.2rem;
+}
+
+.modalHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--bg3);
+  padding-bottom: .9rem;
+  margin-bottom: 1rem;
+}
+
+.modalHead h2 {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+}
+
+.modalHead p {
+  margin: .25rem 0 0;
+  color: var(--grey);
+  font-size: .85rem;
+}
+
+.modalClose {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--r);
+  background: var(--bg2);
+  cursor: pointer;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.modalClose:hover {
+  background: var(--red2);
+  color: var(--red);
+}
+
+.modalForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .85rem;
+}
+
+.modalField,
+.modalFieldFull {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.modalFieldFull {
+  grid-column: 1 / -1;
+}
+
+.modalField label,
+.modalFieldFull label {
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--ink2);
+}
+
+.modalField input,
+.modalField select,
+.modalFieldFull textarea {
+  padding: .7rem .8rem;
+  border: 1.5px solid var(--bg3);
+  border-radius: var(--r);
+  background: var(--bg);
+  font-family: inherit;
+  font-size: .88rem;
+  color: var(--ink);
+}
+
+.modalFieldFull textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.modalField input:focus,
+.modalField select:focus,
+.modalFieldFull textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(10,15,20,.06);
+}
+
+.modalActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: .6rem;
+  padding-top: .5rem;
+}
+
+@media (max-width: 900px) {
+  .pipeBar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .searchRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 700px) {
+  .modalForm {
+    grid-template-columns: 1fr;
+  }
 }
