@@ -1,53 +1,87 @@
 'use client'
+
 import { Sidebar } from '../page'
 import styles from '../page.module.css'
 import qStyles from './qr.module.css'
 
 export default function QR() {
   const url = 'https://clientos.app/jardines-mediterraneos'
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&color=0a0f14&bgcolor=ffffff&data=${encodeURIComponent(url)}`
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&color=0a0f14&bgcolor=ffffff&data=${encodeURIComponent(url)}`
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(url)
+    alert('Link copiado ✅')
+  }
 
   return (
     <div className={styles.app}>
       <Sidebar active="/dashboard/qr" />
+
       <main className={styles.main}>
-        <div className={styles.ph}>
+        <div className={qStyles.hero}>
           <div>
-            <h1 className={styles.phTitle}>QR y landing</h1>
-            <p className={styles.phSub}>Tu web profesional en un código.</p>
+            <span className={qStyles.kicker}>Código QR profesional</span>
+            <h1 className={qStyles.title}>Tu QR y tu landing</h1>
+            <p className={qStyles.subtitle}>
+              Imprime tu QR, pégalo en tu local, tarjetas o furgoneta, y tus clientes accederán directamente a tu web.
+            </p>
           </div>
         </div>
 
         <div className={qStyles.layout}>
-          <div className={qStyles.qrCard}>
-            <div className={qStyles.bizName}>Jardines Mediterráneos</div>
-            <div className={qStyles.qrFrame}>
-              <img src={qrSrc} alt="QR" width={240} height={240} />
+          <section className={qStyles.qrCard}>
+            <div className={qStyles.qrTop}>
+              <span className={qStyles.bizName}>Jardines Mediterráneos</span>
+              <span className={qStyles.status}>Activo</span>
             </div>
+
+            <div className={qStyles.qrFrame}>
+              <img src={qrSrc} alt="QR de Jardines Mediterráneos" width={260} height={260} />
+            </div>
+
             <div className={qStyles.qrLabel}>Escanea para conocernos</div>
             <div className={qStyles.qrUrl}>{url}</div>
-          </div>
+          </section>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className={styles.card}>
-              <div className={styles.cardT} style={{ marginBottom: '1rem' }}>Cómo usar tu QR</div>
-              {[
-                ['01', 'Imprímelo en tarjetas de visita, furgoneta o escaparate.'],
-                ['02', 'El cliente lo escanea y ve tus servicios y contacto.'],
-                ['03', 'Cuando contacte, lo añades al CRM en 3 segundos.'],
-              ].map(([n, t]) => (
-                <div key={n} style={{ display: 'flex', gap: '.85rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <span style={{ fontFamily: 'Syne', fontSize: '1.3rem', fontWeight: 800, color: 'var(--gold)', lineHeight: 1, flexShrink: 0 }}>{n}</span>
-                  <span style={{ fontSize: '.875rem', color: 'var(--ink2)' }}>{t}</span>
-                </div>
-              ))}
-              <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap', marginTop: '.5rem' }}>
-                <a href={qrSrc} download="qr-clientos.png" className={styles.btnDark}>↓ Descargar QR</a>
-                <button className={styles.btnGhost} onClick={() => navigator.clipboard.writeText(url)}>⎘ Copiar link</button>
-                <button className={styles.btnGold}>Ver landing</button>
+          <section className={qStyles.side}>
+            <div className={qStyles.infoCard}>
+              <h2>Qué hacer con tu QR</h2>
+
+              <div className={qStyles.steps}>
+                {[
+                  ['01', 'Descárgalo y pégalo en tu furgoneta, local o tarjeta de visita.'],
+                  ['02', 'Cuando un cliente lo escanee verá tu landing con tus servicios.'],
+                  ['03', 'Podrá contactarte desde ahí y entrar directo a tu CRM.'],
+                ].map(([n, t]) => (
+                  <div key={n} className={qStyles.step}>
+                    <span>{n}</span>
+                    <p>{t}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+
+            <div className={qStyles.actions}>
+              <a href={qrSrc} download="qr-clientos.png" className={qStyles.primaryBtn}>
+                ↓ Descargar QR
+              </a>
+
+              <button className={qStyles.secondaryBtn} onClick={copyLink}>
+                Copiar link
+              </button>
+
+              <a href={url} target="_blank" rel="noopener noreferrer" className={qStyles.secondaryBtn}>
+                Ver landing
+              </a>
+            </div>
+
+            <div className={qStyles.tipCard}>
+              <strong>Consejo rápido</strong>
+              <p>
+                Usa este QR en presupuestos, carteles, tarjetas y mensajes de WhatsApp. Cuantos más lugares lo pongas, más fácil será que te contacten.
+              </p>
+            </div>
+          </section>
         </div>
       </main>
     </div>
