@@ -11,7 +11,6 @@ const CLIENTES_BASE = Array.from({ length: 50 }, (_, i) => ({
   tel: `+34 6${String(i).padStart(2,'0')} ${String(i*3).padStart(3,'0')} ${String(i*7).padStart(3,'0')}`,
   email: `cliente${i+1}@email.com`,
   local: ['Madrid centro','Valencia','Barcelona','Sevilla','Málaga','','','','',''][i % 10],
-  sector: ['Jardinería','Reformas','Estética','Fontanería','Limpieza','','','','',''][i % 10],
   notes: ['Jardín 300m² con olivo.','Sistema de riego 2025.','Terraza en Madrid centro.','Piscina + jardín.','Mantenimiento mensual.','','','','',''][i % 10],
   estado: ['nuevo','nuevo','contactado','cita','completado','contactado','nuevo','completado','cita','contactado'][i % 10],
   created: `${String(Math.floor(Math.random()*28)+1).padStart(2,'0')}/${String(Math.floor(Math.random()*12)+1).padStart(2,'0')}/2026`,
@@ -39,45 +38,104 @@ export default function Clientes() {
   const [view, setView] = useState<'table'|'cards'>('table')
 
   const [showModal, setShowModal] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<any>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
   const [newName, setNewName] = useState('')
   const [newTel, setNewTel] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newLocal, setNewLocal] = useState('')
-  const [newSector, setNewSector] = useState('')
   const [newNotes, setNewNotes] = useState('')
   const [newEstado, setNewEstado] = useState('nuevo')
   const [newNextVisit, setNewNextVisit] = useState('')
 
-  const addCliente = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!newName.trim()) return
-
-    const today = new Date()
-
-    const nuevoCliente = {
-      id: `c${Date.now()}`,
-      name: newName.trim(),
-      tel: newTel.trim(),
-      email: newEmail.trim(),
-      local: newLocal.trim(),
-      sector: newSector.trim(),
-      notes: newNotes.trim(),
-      estado: newEstado,
-      created: today.toLocaleDateString('es-ES'),
-      nextVisit: newNextVisit.trim() || null,
-    }
-
-    setClientes([nuevoCliente, ...clientes])
+  const resetForm = () => {
+    setEditingId(null)
     setNewName('')
     setNewTel('')
     setNewEmail('')
     setNewLocal('')
-    setNewSector('')
     setNewNotes('')
     setNewEstado('nuevo')
     setNewNextVisit('')
+  }
+
+  const openNewModal = () => {
+    resetForm()
+    setShowModal(true)
+  }
+
+  const openEditModal = (cliente: any) => {
+    setEditingId(cliente.id)
+    setNewName(cliente.name || '')
+    setNewTel(cliente.tel || '')
+    setNewEmail(cliente.email || '')
+    setNewLocal(cliente.local || '')
+    setNewNotes(cliente.notes || '')
+    setNewEstado(cliente.estado || 'nuevo')
+    setNewNextVisit(cliente.nextVisit || '')
+    setShowModal(true)
+  }
+
+  const saveCliente = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    if (!newName.trim()) {
+      alert('Escribe el nombre del cliente')
+      return
+    }
+
+    if (editingId) {
+      setClientes(clientes.map(c =>
+        c.id === editingId
+          ? {
+              ...c,
+              name: newName.trim(),
+              tel: newTel.trim(),
+              email: newEmail.trim(),
+              local: newLocal.trim(),
+              notes: newNotes.trim(),
+              estado: newEstado,
+              nextVisit: newNextVisit.trim() || null,
+            }
+          : c
+      ))
+
+      alert('Cliente actualizado correctamente ✅')
+    } else {
+      const today = new Date()
+
+      const nuevoCliente = {
+        id: `c${Date.now()}`,
+        name: newName.trim(),
+        tel: newTel.trim(),
+        email: newEmail.trim(),
+        local: newLocal.trim(),
+        notes: newNotes.trim(),
+        estado: newEstado,
+        created: today.toLocaleDateString('es-ES'),
+        nextVisit: newNextVisit.trim() || null,
+      }
+
+      setClientes([nuevoCliente, ...clientes])
+      setView('cards')
+      alert('Cliente creado correctamente ✅')
+    }
+
+    resetForm()
     setShowModal(false)
-    setView('cards')
+  }
+
+  const deleteCliente = (id: string) => {
+    const closeClientDetail = () => {
+    setSelectedClient(null)
+}
+    const ok = confirm('¿Seguro que quieres eliminar este cliente?')
+
+    if (!ok) return
+
+    setClientes(clientes.filter(c => c.id !== id))
+    alert('Cliente eliminado correctamente ✅')
   }
 
   const counts = { nuevo: 0, contactado: 0, cita: 0, completado: 0 }
@@ -97,8 +155,7 @@ export default function Clientes() {
       c.tel.includes(q) ||
       c.email.toLowerCase().includes(q) ||
       c.notes.toLowerCase().includes(q) ||
-      (c.local || '').toLowerCase().includes(q) ||
-      (c.sector || '').toLowerCase().includes(q)
+      (c.local || '').toLowerCase().includes(q)
     )
   }
 
@@ -137,7 +194,7 @@ export default function Clientes() {
           </div>
 
           <div className={styles.phActions}>
-            <button className={styles.btnDark} onClick={() => setShowModal(true)}>
+            <button className={styles.btnDark} onClick={openNewModal}>
               + Nuevo cliente
             </button>
           </div>
@@ -166,7 +223,7 @@ export default function Clientes() {
             </svg>
             <input
               className={cStyles.searchInp}
-              placeholder="Buscar nombre, teléfono, email, local, sector o notas…"
+              placeholder="Buscar nombre, teléfono, email, local o notas…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -190,7 +247,7 @@ export default function Clientes() {
                 <tr>
                   <th>Nombre</th>
                   <th>Teléfono</th>
-                  <th>Local / Sector</th>
+                  <th>Local</th>
                   <th>Próxima visita</th>
                   <th>Estado</th>
                   <th></th>
@@ -213,8 +270,7 @@ export default function Clientes() {
                     <td style={{ color: '#64748b', fontSize: '.82rem' }}>{c.tel}</td>
 
                     <td style={{ color: '#64748b', fontSize: '.82rem' }}>
-                      <div>📍 {c.local || '—'}</div>
-                      <div>🏷 {c.sector || '—'}</div>
+                      📍 {c.local || '—'}
                     </td>
 
                     <td>
@@ -246,8 +302,15 @@ export default function Clientes() {
 
                     <td>
                       <div style={{ display: 'flex', gap: '.15rem', justifyContent: 'flex-end' }}>
-                        <button className={cStyles.icoBtn} title="Editar">✎</button>
-                        <button className={`${cStyles.icoBtn} ${cStyles.del}`} title="Eliminar">🗑</button>
+                        <button className={cStyles.icoBtn} title="Editar" onClick={() => openEditModal(c)}>✎</button>
+                        <button className={`${cStyles.icoBtn} ${cStyles.del}`} title="Eliminar" onClick={() => deleteCliente(c.id)}>🗑</button>
+                        <a
+                          href={`/dashboard/clientes/${c.id}`}
+                          className={cStyles.icoBtn}
+                          title="Ver cliente"
+                        >
+                          👁
+                        </a>
                       </div>
                     </td>
                   </tr>
@@ -264,13 +327,21 @@ export default function Clientes() {
               const bg = (ESTADO_COLORS[c.estado] || '#f1f5f9|#64748b').split('|')[0]
 
               return (
-                <div key={c.id} className={cStyles.cc} style={{ borderLeft: `5px solid ${color}`, background: '#fff' }}>
+                <div
+                  key={c.id}
+                  className={cStyles.cc}
+                  style={{
+                    borderLeft: `6px solid ${color}`,
+                    background: '#fff',
+                    minHeight: 180,
+                  }}
+                >
                   <div className={cStyles.cardTop}>
                     <div className={cStyles.cardUser}>
                       <div className={cStyles.ccAv}>{c.name.split(' ').map((w:string) => w[0]).slice(0,2).join('')}</div>
                       <div>
                         <div className={cStyles.cardName}>{c.name}</div>
-                        <div className={cStyles.cardTel}>{c.tel}</div>
+                        <div className={cStyles.cardTel}>📍 {c.local || 'Sin local'}</div>
                       </div>
                     </div>
 
@@ -278,43 +349,40 @@ export default function Clientes() {
                   </div>
 
                   <div className={cStyles.cardBody}>
-                    {c.notes ? <p className={cStyles.cardNotes}>{c.notes}</p> : <p className={cStyles.cardNotesMuted}>Sin notas</p>}
-
-                    <div className={cStyles.cardInfo}>
-                      <span>Email</span>
-                      <strong>{c.email || '—'}</strong>
-                    </div>
-
-                    <div className={cStyles.cardInfo}>
-                      <span>Local</span>
-                      <strong>{c.local || '—'}</strong>
-                    </div>
-
-                    <div className={cStyles.cardInfo}>
-                      <span>Sector</span>
-                      <strong>{c.sector || '—'}</strong>
-                    </div>
-
-                    <div className={cStyles.cardInfo}>
-                      <span>Alta</span>
-                      <strong>{c.created}</strong>
-                    </div>
-
                     <div className={cStyles.cardInfo}>
                       <span>Próxima visita</span>
-                      {c.nextVisit ? <strong style={{ color: '#92400e' }}>📅 {c.nextVisit}</strong> : <strong style={{ color: '#94a3b8' }}>Sin cita</strong>}
+                      {c.nextVisit ? (
+                        <strong style={{ color: '#92400e' }}>📅 {c.nextVisit}</strong>
+                      ) : (
+                        <strong style={{ color: '#94a3b8' }}>Sin cita</strong>
+                      )}
                     </div>
                   </div>
 
                   <div className={cStyles.cardFooter}>
-                    <span style={{ background: bg, color, padding: '.28rem .6rem', borderRadius: 999, fontSize: '.68rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                    <span style={{
+                      background: bg,
+                      color,
+                      padding: '.28rem .6rem',
+                      borderRadius: 999,
+                      fontSize: '.68rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase'
+                    }}>
                       {EL[c.estado]}
                     </span>
 
                     <div style={{ display: 'flex', gap: '.3rem' }}>
                       {c.tel && <a href={`https://wa.me/${c.tel.replace(/[^0-9]/g,'')}`} target="_blank" rel="noopener noreferrer" className={cStyles.waBtn}>💬</a>}
-                      <button className={cStyles.icoBtn}>✎</button>
-                      <button className={`${cStyles.icoBtn} ${cStyles.del}`}>🗑</button>
+                      <button className={cStyles.icoBtn} onClick={() => openEditModal(c)}>✎</button>
+                      <button className={`${cStyles.icoBtn} ${cStyles.del}`} onClick={() => deleteCliente(c.id)}>🗑</button>
+                        <a
+                          href={`/dashboard/clientes/${c.id}`}
+                          className={cStyles.icoBtn}
+                          title="Ver cliente"
+                        >
+                          👁
+                        </a>
                     </div>
                   </div>
                 </div>
@@ -328,16 +396,16 @@ export default function Clientes() {
             <div className={cStyles.modalBox}>
               <div className={cStyles.modalHead}>
                 <div>
-                  <h2>Nuevo cliente</h2>
-                  <p>Guarda un contacto y organízalo por estado.</p>
+                  <h2>{editingId ? 'Editar cliente' : 'Nuevo cliente'}</h2>
+                  <p>{editingId ? 'Modifica los datos del cliente.' : 'Guarda un contacto y organízalo por estado.'}</p>
                 </div>
 
-                <button className={cStyles.modalClose} onClick={() => setShowModal(false)}>
+                <button className={cStyles.modalClose} onClick={() => { resetForm(); setShowModal(false) }}>
                   ×
                 </button>
               </div>
 
-              <form onSubmit={addCliente} className={cStyles.modalForm}>
+              <form onSubmit={saveCliente} className={cStyles.modalForm}>
                 <div className={cStyles.modalField}>
                   <label>Nombre</label>
                   <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Laura Gómez" autoFocus />
@@ -356,11 +424,6 @@ export default function Clientes() {
                 <div className={cStyles.modalField}>
                   <label>Local</label>
                   <input value={newLocal} onChange={e => setNewLocal(e.target.value)} placeholder="Ej: Madrid centro" />
-                </div>
-
-                <div className={cStyles.modalField}>
-                  <label>Sector</label>
-                  <input value={newSector} onChange={e => setNewSector(e.target.value)} placeholder="Ej: Estética, fontanería..." />
                 </div>
 
                 <div className={cStyles.modalField}>
@@ -383,18 +446,95 @@ export default function Clientes() {
                 </div>
 
                 <div className={cStyles.modalActions}>
-                  <button type="button" className={styles.btnGhost} onClick={() => setShowModal(false)}>
+                  <button type="button" className={styles.btnGhost} onClick={() => { resetForm(); setShowModal(false) }}>
                     Cancelar
                   </button>
 
                   <button type="submit" className={styles.btnDark}>
-                    Guardar cliente
+                    {editingId ? 'Guardar cambios' : 'Guardar cliente'}
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+        {selectedClient && (
+  <div className={cStyles.modalOverlay}>
+    <div className={cStyles.clientDetailBox}>
+      <div className={cStyles.modalHead}>
+        <div>
+          <h2>{selectedClient.name}</h2>
+          <p>{selectedClient.local || 'Sin local'} · {EL[selectedClient.estado]}</p>
+        </div>
+
+        <button className={cStyles.modalClose} onClick={closeClientDetail}>
+          ×
+        </button>
+      </div>
+
+      <div className={cStyles.clientDetailGrid}>
+        <div className={cStyles.clientDetailCard}>
+          <h3>Ficha</h3>
+
+          <div className={cStyles.detailItem}>
+            <span>Teléfono</span>
+            <strong>{selectedClient.tel || '—'}</strong>
+          </div>
+
+          <div className={cStyles.detailItem}>
+            <span>Email</span>
+            <strong>{selectedClient.email || '—'}</strong>
+          </div>
+
+          <div className={cStyles.detailItem}>
+            <span>Local</span>
+            <strong>{selectedClient.local || '—'}</strong>
+          </div>
+
+          <div className={cStyles.detailItem}>
+            <span>Alta</span>
+            <strong>{selectedClient.created || '—'}</strong>
+          </div>
+
+          <div className={cStyles.detailItem}>
+            <span>Próxima visita</span>
+            <strong>{selectedClient.nextVisit || 'Sin cita'}</strong>
+          </div>
+        </div>
+
+        <div className={cStyles.clientDetailCard}>
+          <h3>Notas</h3>
+          <p className={cStyles.detailNotes}>
+            {selectedClient.notes || 'Sin notas registradas.'}
+          </p>
+
+          <div className={cStyles.detailActions}>
+            {selectedClient.tel && (
+              <a
+                href={`https://wa.me/${selectedClient.tel.replace(/[^0-9]/g,'')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cStyles.detailWhatsapp}
+              >
+                💬 WhatsApp
+              </a>
+            )}
+
+            <button
+              className={cStyles.detailEdit}
+              onClick={() => {
+                closeClientDetail()
+                openEditModal(selectedClient)
+              }}
+            >
+              Editar cliente
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       </main>
     </div>
   )
