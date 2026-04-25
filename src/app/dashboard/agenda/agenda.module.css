@@ -1,0 +1,114 @@
+.layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.formCard {
+  background: var(--white);
+  border: 1px solid var(--bg3);
+  border-radius: var(--r2);
+  padding: 1.35rem;
+  margin-bottom: 1.1rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+
+.field { display: flex; flex-direction: column; gap: .3rem; }
+
+.field label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--ink2);
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: .65rem .85rem;
+  background: var(--white);
+  border: 1.5px solid var(--greyL);
+  border-radius: var(--r);
+  font-size: .875rem;
+  font-family: inherit;
+  transition: all .15s;
+  color: var(--ink);
+}
+
+.field textarea { resize: vertical; }
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(10,15,20,.07);
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calDayName {
+  text-align: center;
+  font-size: .65rem;
+  font-weight: 700;
+  color: var(--grey);
+  text-transform: uppercase;
+  padding: .32rem 0;
+}
+
+.calDay {
+  text-align: center;
+  padding: .55rem .2rem;
+  font-size: .82rem;
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: background .12s;
+  position: relative;
+}
+
+.calDay:hover { background: var(--bg2); }
+
+.today {
+  background: var(--ink) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.dot {
+  position: absolute;
+  bottom: 3px; left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+
+.icoBtn {
+  width: 28px; height: 28px;
+  border-radius: var(--r);
+  display: grid; place-items: center;
+  color: var(--grey);
+  cursor: pointer;
+  transition: all .12s;
+  background: none;
+  border: none;
+  font-size: .82rem;
+}
+
+.icoBtn:hover { background: var(--bg2); color: var(--ink); }
+.del:hover { background: var(--red2) !important; color: var(--red) !important; }
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+}

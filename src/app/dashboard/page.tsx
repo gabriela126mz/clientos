@@ -12,13 +12,11 @@ const NAV = [
   { href: '/dashboard/plan', label: 'Plan y pagos', section: 'Cuenta', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
 ]
 
-function Sidebar({ active }: { active: string }) {
+export function Sidebar({ active }: { active: string }) {
   let lastSection = ''
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.brand}>
-        Clientos <span className={styles.brandDot}></span>
-      </div>
+      <div className={styles.brand}>Clientos <span className={styles.brandDot}></span></div>
       <nav style={{ flex: 1 }}>
         {NAV.map(item => {
           const showSection = item.section && item.section !== lastSection
@@ -26,12 +24,8 @@ function Sidebar({ active }: { active: string }) {
           return (
             <div key={item.href}>
               {showSection && <div className={styles.navSection}>{item.section}</div>}
-              <Link
-                href={item.href}
-                className={`${styles.navBtn} ${active === item.href ? styles.active : ''}`}
-              >
-                {item.icon}
-                {item.label}
+              <Link href={item.href} className={`${styles.navBtn} ${active === item.href ? styles.active : ''}`}>
+                {item.icon}{item.label}
               </Link>
             </div>
           )
@@ -52,61 +46,52 @@ function Sidebar({ active }: { active: string }) {
 }
 
 export default function Dashboard() {
-  const stats = [
-    { label: 'Clientes totales', value: '50', sub: '3 nuevos sin atender', color: 'gold' },
-    { label: 'Facturado cobrado', value: '4.820€', sub: '3 facturas pagadas', color: 'green' },
-    { label: 'Presupuestos abiertos', value: '5', sub: 'pendientes de cierre', color: 'blue' },
-    { label: 'Próximas visitas', value: '3', sub: 'en agenda', color: 'accent' },
+  const today = new Date()
+  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
+  // Generar días del mes actual para el mini calendario
+  const year = today.getFullYear()
+  const month = today.getMonth()
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const offset = firstDay === 0 ? 6 : firstDay - 1
+
+  const agenda = [
+    { time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', day: today.getDate() + 1 },
+    { time: '16:30', title: 'Revisión riego', client: 'Javier Romero', day: today.getDate() + 3 },
+    { time: '11:00', title: 'Entrega proyecto', client: 'Pedro Alonso', day: today.getDate() + 7 },
   ]
 
-  const recentDocs = [
-    { num: 'TRB-001', ref: 'PRES-2026-001', client: 'Carmen Ruiz', amount: '694€', status: 'sent' },
-    { num: 'TRB-002', ref: 'FAC-2026-015', client: 'Javier Romero', amount: '823€', status: 'paid' },
-    { num: 'TRB-003', ref: 'PRES-2026-002', client: 'Bufete Martín', amount: '3.872€', status: 'draft' },
-  ]
-
-  const upcoming = [
-    { date: 'Mañana', time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz' },
-    { date: '28 abr', time: '16:30', title: 'Revisión riego automático', client: 'Javier Romero' },
-    { date: '01 may', time: '11:00', title: 'Entrega proyecto piscina', client: 'Pedro Alonso' },
-  ]
-
-  const pipeline = [
-    { label: 'Nuevos', count: 12, total: 50, color: '#2563eb' },
-    { label: 'Contactados', count: 18, total: 50, color: '#ea580c' },
-    { label: 'Cita agendada', count: 10, total: 50, color: '#e8a820' },
-    { label: 'Completados', count: 10, total: 50, color: '#16a34a' },
-  ]
-
-  const badgeClass: Record<string, string> = {
-    draft: styles.bDraft,
-    sent: styles.bSent,
-    paid: styles.bPaid,
-    overdue: styles.bOver,
-  }
-
-  const badgeLabel: Record<string, string> = {
-    draft: 'Borrador', sent: 'Enviado', paid: 'Pagado', overdue: 'Vencido',
-  }
+  const eventDays = new Set(agenda.map(a => a.day))
 
   return (
     <div className={styles.app}>
       <Sidebar active="/dashboard" />
       <main className={styles.main}>
+
+        {/* HEADER SUPER LIMPIO */}
         <div className={styles.ph}>
           <div>
             <h1 className={styles.phTitle}>Buenos días, Gabriela 👋</h1>
-            <p className={styles.phSub}>Jardines Mediterráneos</p>
+            <p className={styles.phSub}>Sábado, 26 de abril · Jardines Mediterráneos</p>
           </div>
           <div className={styles.phActions}>
-            <button className={styles.btnGhost}>+ Cliente rápido</button>
-            <button className={styles.btnGold}>Ver mi landing →</button>
+            <Link href="/dashboard/clientes" className={styles.btnGhost}>+ Cliente</Link>
+            <Link href="/dashboard/presupuestos" className={styles.btnGhost}>+ Presupuesto</Link>
+            <Link href="/dashboard/agenda" className={styles.btnGold}>+ Visita</Link>
           </div>
         </div>
 
+        {/* STATS — solo 4, muy limpias */}
         <div className={styles.stats}>
-          {stats.map(s => (
-            <div key={s.label} className={`${styles.stat} ${styles[s.color]}`}>
+          {[
+            { label: 'Clientes', value: '50', sub: '3 nuevos', color: 'gold' },
+            { label: 'Cobrado', value: '4.820€', sub: 'este mes', color: 'green' },
+            { label: 'Pendiente cobrar', value: '8.450€', sub: '5 presupuestos', color: 'blue' },
+            { label: 'Visitas esta semana', value: '3', sub: 'próxima: mañana', color: 'accent' },
+          ].map(s => (
+            <div key={s.label} className={`${styles.stat} ${styles[s.color as keyof typeof styles]}`}>
               <div className={styles.statLbl}>{s.label}</div>
               <div className={styles.statVal}>{s.value}</div>
               <div className={styles.statSub}>{s.sub}</div>
@@ -114,33 +99,65 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* DOS COLUMNAS: calendario + agenda del día */}
         <div className={styles.dashGrid}>
           <div className={styles.dashCol}>
+
+            {/* CALENDARIO VISUAL */}
+            <div className={styles.card}>
+              <div className={styles.cardH}>
+                <div className={styles.cardT}>
+                  {months[month]} {year}
+                </div>
+                <Link href="/dashboard/agenda" className={styles.cardLink}>Ver agenda completa →</Link>
+              </div>
+              <div className={styles.calGrid}>
+                {['L','M','X','J','V','S','D'].map(d => (
+                  <div key={d} className={styles.calDayName}>{d}</div>
+                ))}
+                {Array.from({ length: offset }).map((_, i) => (
+                  <div key={`e${i}`} />
+                ))}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const d = i + 1
+                  const isToday = d === today.getDate()
+                  const hasEvent = eventDays.has(d)
+                  return (
+                    <div
+                      key={d}
+                      className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}
+                    >
+                      {d}
+                      {hasEvent && <span className={styles.calDot}></span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ÚLTIMOS CLIENTES */}
             <div className={styles.card} style={{ padding: 0 }}>
               <div className={styles.cardH} style={{ padding: '1.1rem 1.35rem 0' }}>
-                <div className={styles.cardT}>Últimos documentos</div>
-                <Link href="/dashboard/presupuestos" className={styles.cardLink}>Ver todos →</Link>
+                <div className={styles.cardT}>Últimos clientes</div>
+                <Link href="/dashboard/clientes" className={styles.cardLink}>Ver CRM →</Link>
               </div>
               <table className={styles.tbl}>
                 <thead>
-                  <tr>
-                    <th>N.Trabajo</th>
-                    <th>Número</th>
-                    <th>Cliente</th>
-                    <th>Importe</th>
-                    <th>Estado</th>
-                  </tr>
+                  <tr><th>Nombre</th><th>Teléfono</th><th>Estado</th></tr>
                 </thead>
                 <tbody>
-                  {recentDocs.map(d => (
-                    <tr key={d.ref}>
-                      <td style={{ color: 'var(--grey)' }}>{d.num}</td>
-                      <td><strong>{d.ref}</strong></td>
-                      <td>{d.client}</td>
-                      <td><strong>{d.amount}</strong></td>
+                  {[
+                    { name: 'Carmen Ruiz', tel: '+34 611 222 333', estado: 'completado' },
+                    { name: 'Javier Romero', tel: '+34 677 888 999', estado: 'cita' },
+                    { name: 'María García', tel: '+34 699 000 111', estado: 'nuevo' },
+                    { name: 'Pedro Alonso', tel: '+34 622 111 222', estado: 'contactado' },
+                  ].map(c => (
+                    <tr key={c.name}>
+                      <td><strong>{c.name}</strong></td>
+                      <td style={{ color: 'var(--grey)' }}>{c.tel}</td>
                       <td>
-                        <span className={`${styles.bdg} ${badgeClass[d.status]}`}>
-                          {badgeLabel[d.status]}
+                        <span className={`${styles.bdg} ${styles[`b${c.estado.charAt(0).toUpperCase() + c.estado.slice(1)}` as keyof typeof styles]}`}>
+                          {c.estado}
                         </span>
                       </td>
                     </tr>
@@ -148,67 +165,70 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardH}>
-                <div className={styles.cardT}>Pipeline de clientes</div>
-                <Link href="/dashboard/clientes" className={styles.cardLink}>CRM →</Link>
-              </div>
-              <div className={styles.pipeBar}>
-                {pipeline.map(p => (
-                  <div key={p.label} className={styles.pipeRow}>
-                    <div className={styles.pipeRowHead}>
-                      <span className={styles.pipeRowLabel}>{p.label}</span>
-                      <span className={styles.pipeRowCount} style={{ color: p.color }}>{p.count}</span>
-                    </div>
-                    <div className={styles.pipeBar2}>
-                      <div
-                        className={styles.pipeBar2Inner}
-                        style={{ width: `${(p.count / p.total) * 100}%`, background: p.color }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
+          {/* COLUMNA DERECHA: agenda próxima + docs */}
           <div className={styles.dashCol}>
             <div className={styles.card}>
               <div className={styles.cardH}>
-                <div className={styles.cardT}>Agenda próxima</div>
+                <div className={styles.cardT}>Próximas visitas</div>
                 <Link href="/dashboard/agenda" className={styles.cardLink}>Ver →</Link>
               </div>
-              {upcoming.map((a, i) => (
-                <div key={i} style={{ padding: '.7rem 0', borderBottom: i < upcoming.length - 1 ? '1px solid var(--bg2)' : 'none' }}>
-                  <div style={{ fontSize: '.73rem', color: 'var(--grey)', marginBottom: '.12rem' }}>
-                    {a.date} · {a.time}
+              {agenda.map((a, i) => (
+                <div key={i} style={{
+                  padding: '.85rem 0',
+                  borderBottom: i < agenda.length - 1 ? '1px solid var(--bg2)' : 'none',
+                  display: 'flex', gap: '1rem', alignItems: 'center'
+                }}>
+                  <div style={{
+                    background: 'var(--gold2)', borderRadius: 'var(--r)',
+                    padding: '.4rem .6rem', textAlign: 'center', flexShrink: 0
+                  }}>
+                    <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--grey)', textTransform: 'uppercase' }}>
+                      {months[month]}
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'Syne', lineHeight: 1 }}>
+                      {a.day}
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 600, fontSize: '.865rem' }}>{a.title}</div>
-                  <div style={{ fontSize: '.76rem', color: 'var(--grey)', marginTop: '.08rem' }}>{a.client}</div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{a.title}</div>
+                    <div style={{ fontSize: '.76rem', color: 'var(--grey)', marginTop: '.1rem' }}>
+                      {a.time} · {a.client}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardH}>
-                <div className={styles.cardT}>Actividad reciente</div>
+            <div className={styles.card} style={{ padding: 0 }}>
+              <div className={styles.cardH} style={{ padding: '1.1rem 1.35rem 0' }}>
+                <div className={styles.cardT}>Documentos recientes</div>
+                <Link href="/dashboard/presupuestos" className={styles.cardLink}>Ver →</Link>
               </div>
-              <div className={styles.actFeed}>
-                {[
-                  { ico: '📥', cl: 'b', text: <><strong>Carmen Ruiz</strong> añadida al CRM</>, time: 'hace 2 min' },
-                  { ico: '✅', cl: 'g', text: <>Factura pagada: <strong>823€</strong></>, time: 'hace 1h' },
-                  { ico: '📅', cl: 'y', text: <>Visita con <strong>Javier Romero</strong></>, time: 'hace 3h' },
-                ].map((a, i) => (
-                  <div key={i} className={styles.actItem}>
-                    <div className={`${styles.actIco} ${styles[a.cl]}`}>{a.ico}</div>
-                    <div>
-                      <div className={styles.actTxt}>{a.text}</div>
-                      <div className={styles.actTime}>{a.time}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <table className={styles.tbl}>
+                <thead>
+                  <tr><th>Número</th><th>Cliente</th><th>Total</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                  {[
+                    { ref: 'PRES-2026-001', client: 'Carmen Ruiz', amount: '694€', status: 'sent' },
+                    { ref: 'FAC-2026-015', client: 'Javier Romero', amount: '823€', status: 'paid' },
+                    { ref: 'PRES-2026-002', client: 'Bufete Martín', amount: '3.872€', status: 'draft' },
+                  ].map(d => (
+                    <tr key={d.ref}>
+                      <td><strong>{d.ref}</strong></td>
+                      <td style={{ color: 'var(--grey)' }}>{d.client}</td>
+                      <td><strong>{d.amount}</strong></td>
+                      <td>
+                        <span className={`${styles.bdg} ${styles[`b${d.status.charAt(0).toUpperCase() + d.status.slice(1)}` as keyof typeof styles]}`}>
+                          {{ draft: 'Borrador', sent: 'Enviado', paid: 'Pagado' }[d.status]}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

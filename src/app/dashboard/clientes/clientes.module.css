@@ -1,0 +1,190 @@
+/* QUICK ADD */
+.quickAdd {
+  background: var(--white);
+  border: 2px dashed var(--greyL);
+  border-radius: var(--r2);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.1rem;
+  transition: all .15s;
+}
+
+.quickAdd:focus-within {
+  border-color: var(--ink);
+  border-style: solid;
+  box-shadow: var(--sh2);
+}
+
+.qaLabel {
+  font-family: 'Syne', sans-serif;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: .75rem;
+}
+
+.qaRow {
+  display: grid;
+  grid-template-columns: 1fr 180px 160px auto;
+  gap: .65rem;
+  align-items: end;
+}
+
+.qaField { display: flex; flex-direction: column; gap: .28rem; }
+
+.qaField label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--ink2);
+}
+
+.qaField input,
+.qaField select {
+  padding: .62rem .75rem;
+  background: var(--bg);
+  border: 1.5px solid var(--bg3);
+  border-radius: var(--r);
+  font-size: .875rem;
+  transition: all .15s;
+  color: var(--ink);
+}
+
+.qaField input:focus,
+.qaField select:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(10,15,20,.06);
+}
+
+.qaHint { font-size: .72rem; color: var(--grey); margin-top: .5rem; }
+
+/* PIPELINE BAR */
+.pipeBar {
+  display: flex;
+  background: var(--white);
+  border: 1px solid var(--bg3);
+  border-radius: var(--r2);
+  overflow: hidden;
+  margin-bottom: 1.1rem;
+}
+
+.ps {
+  flex: 1;
+  padding: .8rem .9rem;
+  border-right: 1px solid var(--bg2);
+  cursor: pointer;
+  transition: background .14s;
+  user-select: none;
+}
+
+.ps:last-child { border-right: none; }
+.ps:hover { background: var(--bg); }
+.psOn { background: var(--bg2) !important; }
+
+.psLabel {
+  font-size: .64rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+.psNum {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: .12rem;
+}
+
+.all { color: var(--ink); }
+.n   { color: #2563eb; }
+.c   { color: #ea580c; }
+.ci  { color: #ca8a04; }
+.co  { color: #16a34a; }
+
+/* SEARCH */
+.searchRow { display: flex; gap: .65rem; margin-bottom: 1rem; }
+
+.searchWrap { position: relative; flex: 1; }
+
+.searchWrap svg {
+  position: absolute;
+  left: .7rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--grey);
+  pointer-events: none;
+}
+
+.searchInp {
+  width: 100%;
+  padding: .62rem .85rem .62rem 2.1rem;
+  background: var(--white);
+  border: 1.5px solid var(--greyL);
+  border-radius: var(--r);
+  font-size: .875rem;
+  transition: all .15s;
+}
+
+.searchInp:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(10,15,20,.06);
+}
+
+/* AVATAR */
+.ccAv {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg2);
+  display: grid;
+  place-items: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .75rem;
+  color: var(--ink2);
+  flex-shrink: 0;
+}
+
+/* ESTADO PILLS */
+.epills { display: flex; gap: .25rem; flex-wrap: wrap; }
+
+.epill {
+  padding: .18rem .5rem;
+  border-radius: 20px;
+  font-size: .64rem;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+  transition: all .12s;
+  cursor: pointer;
+  font-family: inherit;
+  opacity: .38;
+}
+
+.nuevo      { background: var(--blue2);   color: #1d4ed8; }
+.contactado { background: var(--orange2); color: #c2410c; }
+.cita       { background: var(--gold2);   color: #92400e; }
+.completado { background: var(--green2);  color: #166534; }
+.cur        { opacity: 1; box-shadow: 0 0 0 1.5px currentColor; }
+.epill:hover { opacity: 1; }
+
+/* ICON BUTTONS */
+.icoBtn {
+  width: 28px; height: 28px;
+  border-radius: var(--r);
+  display: grid;
+  place-items: center;
+  color: var(--grey);
+  transition: all .12s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .85rem;
+}
+
+.icoBtn:hover { background: var(--bg2); color: var(--ink); }
+.del:hover    { background: var(--red2) !important; color: var(--red) !important; }

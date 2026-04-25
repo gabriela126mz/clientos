@@ -1,0 +1,61 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 1.35rem;
+  align-items: start;
+}
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+
+.field { display: flex; flex-direction: column; gap: .3rem; margin-bottom: .75rem; }
+
+.field label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--ink2);
+}
+
+.field input,
+.field select {
+  padding: .65rem .85rem;
+  background: var(--white);
+  border: 1.5px solid var(--greyL);
+  border-radius: var(--r);
+  font-size: .875rem;
+  font-family: inherit;
+  transition: all .15s;
+  color: var(--ink);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(10,15,20,.07);
+}
+
+.urlCard {
+  background: var(--ink);
+  border-radius: var(--r);
+  padding: 1.25rem;
+}
+
+.uploadZone {
+  border: 2px dashed var(--greyL);
+  border-radius: var(--r2);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.uploadZone:hover { border-color: var(--ink); background: var(--greyP); }
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+}
