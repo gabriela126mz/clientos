@@ -188,3 +188,108 @@
 
 .icoBtn:hover { background: var(--bg2); color: var(--ink); }
 .del:hover    { background: var(--red2) !important; color: var(--red) !important; }
+
+
+.ccGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.cc {
+  border: 1px solid var(--bg3);
+  border-radius: var(--r2);
+  padding: 1rem;
+  box-shadow: var(--sh);
+  transition: all .15s ease;
+}
+
+.cc:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh2);
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: flex-start;
+  margin-bottom: .9rem;
+}
+
+.cardUser {
+  display: flex;
+  gap: .7rem;
+  align-items: center;
+}
+
+.cardName {
+  font-weight: 800;
+  font-size: .95rem;
+  color: var(--ink);
+}
+
+.cardTel {
+  font-size: .75rem;
+  color: #64748b;
+  margin-top: .1rem;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  margin-bottom: .9rem;
+}
+
+.cardNotes {
+  font-size: .8rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.cardNotesMuted {
+  font-size: .78rem;
+  color: #94a3b8;
+  margin: 0;
+  font-style: italic;
+}
+
+.cardInfo {
+  display: flex;
+  justify-content: space-between;
+  gap: .8rem;
+  font-size: .75rem;
+  border-top: 1px solid #ede9e1;
+  padding-top: .45rem;
+}
+
+.cardInfo span {
+  color: #94a3b8;
+}
+
+.cardInfo strong {
+  color: #334155;
+  text-align: right;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: center;
+  border-top: 1px solid #ede9e1;
+  padding-top: .75rem;
+}
+
+.waBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r);
+  display: grid;
+  place-items: center;
+  background: #dcfce7;
+  color: #166534;
+  text-decoration: none;
+}

@@ -6,7 +6,8 @@ const NAV = [
   { href: '/dashboard', label: 'Panel', section: 'General', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
   { href: '/dashboard/clientes', label: 'Clientes', section: 'Negocio', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-1a5 5 0 015-5h2a5 5 0 015 5v1"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-1a4 4 0 00-3-3.85"/></svg> },
   { href: '/dashboard/agenda', label: 'Agenda', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-  { href: '/dashboard/presupuestos', label: 'Presupuestos', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+  { href: '/dashboard/presupuestos', label: 'Presupuestos', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/></svg> },
+  { href: '/dashboard/facturas', label: 'Facturas', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg> },
   { href: '/dashboard/mi-negocio', label: 'Mi negocio', section: 'Mi web', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg> },
   { href: '/dashboard/qr', label: 'QR y landing', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
   { href: '/dashboard/plan', label: 'Plan y pagos', section: 'Cuenta', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
@@ -47,10 +48,8 @@ export function Sidebar({ active }: { active: string }) {
 
 export default function Dashboard() {
   const today = new Date()
-  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-
-  // Generar días del mes actual para el mini calendario
+  const monthsFull = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
   const year = today.getFullYear()
   const month = today.getMonth()
   const firstDay = new Date(year, month, 1).getDay()
@@ -58,9 +57,10 @@ export default function Dashboard() {
   const offset = firstDay === 0 ? 6 : firstDay - 1
 
   const agenda = [
-    { time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', day: today.getDate() + 1 },
-    { time: '16:30', title: 'Revisión riego', client: 'Javier Romero', day: today.getDate() + 3 },
-    { time: '11:00', title: 'Entrega proyecto', client: 'Pedro Alonso', day: today.getDate() + 7 },
+    { time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', place: 'C/ Alcalá 45, Madrid', day: today.getDate() + 1, isToday: false },
+    { time: '16:30', title: 'Revisión riego', client: 'Javier Romero', place: 'Urb. Los Pinos, Pozuelo', day: today.getDate() + 3, isToday: false },
+    { time: '11:00', title: 'Entrega proyecto piscina', client: 'Pedro Alonso', place: 'Av. Principal 10, Madrid', day: today.getDate() + 7, isToday: false },
+    { time: '09:00', title: 'Presupuesto jardín', client: 'Lucía Navarro', place: 'C/ Olmos 3, Madrid', day: today.getDate() + 10, isToday: false },
   ]
 
   const eventDays = new Set(agenda.map(a => a.day))
@@ -70,11 +70,11 @@ export default function Dashboard() {
       <Sidebar active="/dashboard" />
       <main className={styles.main}>
 
-        {/* HEADER SUPER LIMPIO */}
+        {/* HEADER LIMPIO */}
         <div className={styles.ph}>
           <div>
             <h1 className={styles.phTitle}>Buenos días, Gabriela 👋</h1>
-            <p className={styles.phSub}>Sábado, 26 de abril · Jardines Mediterráneos</p>
+            <p className={styles.phSub}>Jardines Mediterráneos · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
           </div>
           <div className={styles.phActions}>
             <Link href="/dashboard/clientes" className={styles.btnGhost}>+ Cliente</Link>
@@ -83,13 +83,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* STATS — solo 4, muy limpias */}
+        {/* STATS — 4 cifras clave */}
         <div className={styles.stats}>
           {[
-            { label: 'Clientes', value: '50', sub: '3 nuevos', color: 'gold' },
-            { label: 'Cobrado', value: '4.820€', sub: 'este mes', color: 'green' },
-            { label: 'Pendiente cobrar', value: '8.450€', sub: '5 presupuestos', color: 'blue' },
-            { label: 'Visitas esta semana', value: '3', sub: 'próxima: mañana', color: 'accent' },
+            { label: 'Clientes', value: '50', sub: '3 nuevos esta semana', color: 'gold' },
+            { label: 'Cobrado este mes', value: '4.820€', sub: '3 facturas pagadas', color: 'green' },
+            { label: 'Por cobrar', value: '8.450€', sub: '5 presupuestos abiertos', color: 'blue' },
+            { label: 'Visitas esta semana', value: '3', sub: 'Próxima: mañana 10:00', color: 'accent' },
           ].map(s => (
             <div key={s.label} className={`${styles.stat} ${styles[s.color as keyof typeof styles]}`}>
               <div className={styles.statLbl}>{s.label}</div>
@@ -99,136 +99,59 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* DOS COLUMNAS: calendario + agenda del día */}
-        <div className={styles.dashGrid}>
-          <div className={styles.dashCol}>
+        {/* LAYOUT PRINCIPAL: agenda grande + calendario */}
+        <div className={styles.dashMain}>
 
-            {/* CALENDARIO VISUAL */}
-            <div className={styles.card}>
-              <div className={styles.cardH}>
-                <div className={styles.cardT}>
-                  {months[month]} {year}
-                </div>
-                <Link href="/dashboard/agenda" className={styles.cardLink}>Ver agenda completa →</Link>
-              </div>
-              <div className={styles.calGrid}>
-                {['L','M','X','J','V','S','D'].map(d => (
-                  <div key={d} className={styles.calDayName}>{d}</div>
-                ))}
-                {Array.from({ length: offset }).map((_, i) => (
-                  <div key={`e${i}`} />
-                ))}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const d = i + 1
-                  const isToday = d === today.getDate()
-                  const hasEvent = eventDays.has(d)
-                  return (
-                    <div
-                      key={d}
-                      className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}
-                    >
-                      {d}
-                      {hasEvent && <span className={styles.calDot}></span>}
-                    </div>
-                  )
-                })}
-              </div>
+          {/* AGENDA — protagonista */}
+          <div className={styles.card}>
+            <div className={styles.cardH}>
+              <div className={styles.cardT}>📅 Próximas visitas</div>
+              <Link href="/dashboard/agenda" className={styles.cardLink}>Ver agenda completa →</Link>
             </div>
-
-            {/* ÚLTIMOS CLIENTES */}
-            <div className={styles.card} style={{ padding: 0 }}>
-              <div className={styles.cardH} style={{ padding: '1.1rem 1.35rem 0' }}>
-                <div className={styles.cardT}>Últimos clientes</div>
-                <Link href="/dashboard/clientes" className={styles.cardLink}>Ver CRM →</Link>
-              </div>
-              <table className={styles.tbl}>
-                <thead>
-                  <tr><th>Nombre</th><th>Teléfono</th><th>Estado</th></tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: 'Carmen Ruiz', tel: '+34 611 222 333', estado: 'completado' },
-                    { name: 'Javier Romero', tel: '+34 677 888 999', estado: 'cita' },
-                    { name: 'María García', tel: '+34 699 000 111', estado: 'nuevo' },
-                    { name: 'Pedro Alonso', tel: '+34 622 111 222', estado: 'contactado' },
-                  ].map(c => (
-                    <tr key={c.name}>
-                      <td><strong>{c.name}</strong></td>
-                      <td style={{ color: 'var(--grey)' }}>{c.tel}</td>
-                      <td>
-                        <span className={`${styles.bdg} ${styles[`b${c.estado.charAt(0).toUpperCase() + c.estado.slice(1)}` as keyof typeof styles]}`}>
-                          {c.estado}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* COLUMNA DERECHA: agenda próxima + docs */}
-          <div className={styles.dashCol}>
-            <div className={styles.card}>
-              <div className={styles.cardH}>
-                <div className={styles.cardT}>Próximas visitas</div>
-                <Link href="/dashboard/agenda" className={styles.cardLink}>Ver →</Link>
-              </div>
+            <div className={styles.agendaList}>
               {agenda.map((a, i) => (
-                <div key={i} style={{
-                  padding: '.85rem 0',
-                  borderBottom: i < agenda.length - 1 ? '1px solid var(--bg2)' : 'none',
-                  display: 'flex', gap: '1rem', alignItems: 'center'
-                }}>
-                  <div style={{
-                    background: 'var(--gold2)', borderRadius: 'var(--r)',
-                    padding: '.4rem .6rem', textAlign: 'center', flexShrink: 0
-                  }}>
-                    <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--grey)', textTransform: 'uppercase' }}>
-                      {months[month]}
-                    </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'Syne', lineHeight: 1 }}>
-                      {a.day}
+                <div key={i} className={styles.agendaItem}>
+                  {/* Fecha visual */}
+                  <div className={styles.agendaDate}>
+                    <span className={styles.agendaMonth}>{months[month]}</span>
+                    <span className={styles.agendaDay}>{a.day}</span>
+                  </div>
+                  {/* Info */}
+                  <div className={styles.agendaInfo}>
+                    <div className={styles.agendaTitle}>{a.title}</div>
+                    <div className={styles.agendaClient}>
+                      <span className={styles.agendaClientName}>{a.client}</span>
+                      <span className={styles.agendaPlace}>📍 {a.place}</span>
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{a.title}</div>
-                    <div style={{ fontSize: '.76rem', color: 'var(--grey)', marginTop: '.1rem' }}>
-                      {a.time} · {a.client}
-                    </div>
-                  </div>
+                  {/* Hora */}
+                  <div className={styles.agendaTime}>{a.time}</div>
                 </div>
               ))}
             </div>
+          </div>
 
-            <div className={styles.card} style={{ padding: 0 }}>
-              <div className={styles.cardH} style={{ padding: '1.1rem 1.35rem 0' }}>
-                <div className={styles.cardT}>Documentos recientes</div>
-                <Link href="/dashboard/presupuestos" className={styles.cardLink}>Ver →</Link>
-              </div>
-              <table className={styles.tbl}>
-                <thead>
-                  <tr><th>Número</th><th>Cliente</th><th>Total</th><th>Estado</th></tr>
-                </thead>
-                <tbody>
-                  {[
-                    { ref: 'PRES-2026-001', client: 'Carmen Ruiz', amount: '694€', status: 'sent' },
-                    { ref: 'FAC-2026-015', client: 'Javier Romero', amount: '823€', status: 'paid' },
-                    { ref: 'PRES-2026-002', client: 'Bufete Martín', amount: '3.872€', status: 'draft' },
-                  ].map(d => (
-                    <tr key={d.ref}>
-                      <td><strong>{d.ref}</strong></td>
-                      <td style={{ color: 'var(--grey)' }}>{d.client}</td>
-                      <td><strong>{d.amount}</strong></td>
-                      <td>
-                        <span className={`${styles.bdg} ${styles[`b${d.status.charAt(0).toUpperCase() + d.status.slice(1)}` as keyof typeof styles]}`}>
-                          {{ draft: 'Borrador', sent: 'Enviado', paid: 'Pagado' }[d.status]}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* CALENDARIO — compacto pero útil */}
+          <div className={styles.card}>
+            <div className={styles.cardH}>
+              <div className={styles.cardT}>{monthsFull[month]} {year}</div>
+            </div>
+            <div className={styles.calGrid}>
+              {['L','M','X','J','V','S','D'].map(d => (
+                <div key={d} className={styles.calDayName}>{d}</div>
+              ))}
+              {Array.from({ length: offset }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const d = i + 1
+                const isToday = d === today.getDate()
+                const hasEvent = eventDays.has(d)
+                return (
+                  <div key={d} className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}>
+                    {d}
+                    {hasEvent && <span className={styles.calDot} />}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

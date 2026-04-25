@@ -2,23 +2,27 @@
 import { useState } from 'react'
 import { Sidebar } from '../page'
 import styles from '../page.module.css'
-import pStyles from './presupuestos.module.css'
+import pStyles from '../presupuestos/presupuestos.module.css'
 
-type Status = 'draft'|'sent'|'accepted'|'rejected'
+type Status = 'draft'|'sent'|'paid'|'overdue'
 
-const STATUS_LABEL: Record<Status,string> = { draft:'Borrador', sent:'Enviado', accepted:'Aceptado', rejected:'Rechazado' }
+const STATUS_LABEL: Record<Status,string> = { draft:'Borrador', sent:'Enviada', paid:'Pagada', overdue:'Vencida' }
 const STATUS_COLOR: Record<Status,[string,string]> = {
-  draft:    ['#ede9e1','#64748b'],
-  sent:     ['#dbeafe','#1d4ed8'],
-  accepted: ['#dcfce7','#166534'],
-  rejected: ['#fee2e2','#991b1b'],
+  draft:   ['#ede9e1','#64748b'],
+  sent:    ['#dbeafe','#1d4ed8'],
+  paid:    ['#dcfce7','#166534'],
+  overdue: ['#fee2e2','#991b1b'],
 }
 
-const DOCS = [
-  { id:'q1', wnum:'TRB-001', num:'PRES-2026-001', client:'Carmen Ruiz',   date:'10/04/2026', amount:694.2,  status:'sent'     as Status },
-  { id:'q2', wnum:'TRB-002', num:'PRES-2026-002', client:'Bufete Martín', date:'18/04/2026', amount:3872,   status:'accepted' as Status },
-  { id:'q3', wnum:'TRB-003', num:'PRES-2026-003', client:'Lucía Navarro', date:'22/04/2026', amount:653.4,  status:'draft'    as Status },
-  { id:'q4', wnum:'TRB-004', num:'PRES-2026-004', client:'Pedro Alonso',  date:'23/04/2026', amount:1200,   status:'rejected' as Status },
+const INVOICES = [
+  { id:'f1', wnum:'TRB-002', num:'FAC-2026-015', client:'Javier Romero', date:'15/04/2026', amount:822.8,  status:'paid'    as Status, fromQuote: true },
+  { id:'f2', wnum:'TRB-004', num:'FAC-2026-016', client:'Pedro Alonso',  date:'20/04/2026', amount:4477.8, status:'paid'    as Status, fromQuote: false },
+  { id:'f3', wnum:'TRB-006', num:'FAC-2026-017', client:'Ana Martín',    date:'23/04/2026', amount:380,    status:'sent'    as Status, fromQuote: false },
+  { id:'f4', wnum:'TRB-007', num:'FAC-2026-018', client:'Rosa Moreno',   date:'10/04/2026', amount:950,    status:'overdue' as Status, fromQuote: false },
+]
+
+const ACCEPTED_QUOTES = [
+  { id:'q2', num:'PRES-2026-002', client:'Bufete Martín', amount:3872 },
 ]
 
 const fmt = (n:number) => n.toLocaleString('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:0,maximumFractionDigits:2})
@@ -26,9 +30,10 @@ const fmt = (n:number) => n.toLocaleString('es-ES',{style:'currency',currency:'E
 interface Line { desc:string; detail:string; workers:number; price:number; tax:number; discount:number }
 const emptyLine = ():Line => ({ desc:'', detail:'', workers:1, price:0, tax:21, discount:0 })
 
-export default function Presupuestos() {
+export default function Facturas() {
   const [showForm, setShowForm] = useState(false)
   const [isExt, setIsExt] = useState(false)
+  const [fromQuote, setFromQuote] = useState(false)
   const [lines, setLines] = useState<Line[]>([emptyLine()])
 
   const updateLine = (i:number, key:keyof Line, val:string|number) =>
@@ -40,41 +45,69 @@ export default function Presupuestos() {
   const tax   = lines.reduce((s,l) => s + l.workers*l.price*(1-l.discount/100)*(l.tax/100), 0)
   const total = base + tax
 
-  const pending = DOCS.filter(d=>d.status!=='accepted').reduce((s,d)=>s+d.amount,0)
+  const cobrado = INVOICES.filter(f=>f.status==='paid').reduce((s,f)=>s+f.amount,0)
+  const pendiente = INVOICES.filter(f=>f.status!=='paid').reduce((s,f)=>s+f.amount,0)
 
   return (
     <div className={styles.app}>
-      <Sidebar active="/dashboard/presupuestos" />
+      <Sidebar active="/dashboard/facturas" />
       <main className={styles.main}>
         <div className={styles.ph}>
           <div>
-            <h1 className={styles.phTitle}>Presupuestos</h1>
-            <p className={styles.phSub}>Pendiente de cerrar: <strong>{fmt(pending)}</strong></p>
+            <h1 className={styles.phTitle}>Facturas</h1>
+            <p className={styles.phSub}>
+              Cobrado: <strong style={{color:'#166534'}}>{fmt(cobrado)}</strong>
+              &nbsp;·&nbsp;Pendiente: <strong style={{color:'#dc2626'}}>{fmt(pendiente)}</strong>
+            </p>
           </div>
-          <button className={styles.btnDark} onClick={() => { setShowForm(true); setIsExt(false); setLines([emptyLine()]); }}>
-            + Nuevo presupuesto
+          <button className={styles.btnDark} onClick={() => { setShowForm(true); setIsExt(false); setFromQuote(false); setLines([emptyLine()]); }}>
+            + Nueva factura
           </button>
         </div>
 
-        {/* FORMULARIO INLINE */}
+        {/* FORMULARIO */}
         {showForm && (
           <div className={pStyles.formCard}>
-            {/* TOP BAR con toggle externo */}
             <div className={pStyles.formTopBar}>
-              <div className={pStyles.formTitle}>📄 Nuevo presupuesto</div>
+              <div className={pStyles.formTitle}>🧾 Nueva factura</div>
               <div className={pStyles.extToggle}>
+                {/* FROM QUOTE */}
+                <label className={`${pStyles.extBtn} ${pStyles.extBtnAlt} ${fromQuote ? pStyles.extOn : ''}`}>
+                  <input type="checkbox" checked={fromQuote} onChange={e => { setFromQuote(e.target.checked); setIsExt(false); }} style={{display:'none'}} />
+                  📋 Desde presupuesto
+                </label>
+                {/* EXTERNAL */}
                 <label className={`${pStyles.extBtn} ${isExt ? pStyles.extOn : ''}`}>
-                  <input type="checkbox" checked={isExt} onChange={e => setIsExt(e.target.checked)} style={{display:'none'}} />
-                  🤝 {isExt ? 'Presupuesto para otro negocio' : 'Presupuesto para otro negocio'}
+                  <input type="checkbox" checked={isExt} onChange={e => { setIsExt(e.target.checked); setFromQuote(false); }} style={{display:'none'}} />
+                  🤝 Facturar para otro negocio
                 </label>
                 <button className={pStyles.closeBtn} onClick={() => setShowForm(false)}>×</button>
               </div>
             </div>
 
-            {/* DATOS EXTERNO — se despliega si está activo */}
+            {/* DESDE PRESUPUESTO */}
+            {fromQuote && (
+              <div className={pStyles.extBlock}>
+                <div className={pStyles.extBlockTitle}>📋 Selecciona el presupuesto aceptado</div>
+                {ACCEPTED_QUOTES.map(q => (
+                  <div key={q.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'.75rem',background:'#fff',borderRadius:8,border:'1px solid #e2ddd4'}}>
+                    <div>
+                      <strong>{q.num}</strong>
+                      <span style={{marginLeft:'.75rem',color:'#64748b',fontSize:'.84rem'}}>{q.client} · {fmt(q.amount)}</span>
+                    </div>
+                    <button className={styles.btnDark} style={{padding:'.38rem .75rem',fontSize:'.78rem'}}
+                      onClick={() => setLines([{ desc:'Servicios según presupuesto '+q.num, detail:'', workers:1, price:q.amount/1.21, tax:21, discount:0 }])}>
+                      Usar este →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* DATOS EXTERNO */}
             {isExt && (
               <div className={pStyles.extBlock}>
-                <div className={pStyles.extBlockTitle}>👤 Datos del negocio emisor (el otro emprendedor)</div>
+                <div className={pStyles.extBlockTitle}>👤 Datos del negocio que emite la factura</div>
                 <div className={pStyles.grid3}>
                   <div className={pStyles.field}><label>Nombre / empresa *</label><input placeholder="Ej: Reformas García SL" /></div>
                   <div className={pStyles.field}><label>NIF / CIF / NIE *</label><input placeholder="B12345678" /></div>
@@ -86,32 +119,48 @@ export default function Presupuestos() {
               </div>
             )}
 
-            {/* CABECERA DOC */}
+            {/* CABECERA */}
             <div className={pStyles.docHead}>
-              <div className={pStyles.field}><label>Nº de trabajo</label><input placeholder="TRB-005" /></div>
+              <div className={pStyles.field}><label>Nº de trabajo</label><input placeholder="TRB-008" /></div>
               <div className={pStyles.field}><label>Fecha</label><input type="date" defaultValue={new Date().toISOString().split('T')[0]} /></div>
               <div className={pStyles.field}><label>Estado</label>
                 <select>
-                  {Object.entries(STATUS_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                  <option value="draft">Borrador</option>
+                  <option value="sent">Enviada</option>
+                  <option value="paid">Pagada ✓</option>
+                  <option value="overdue">Vencida</option>
                 </select>
               </div>
-              <div className={pStyles.field}><label>Cliente *</label>
+              <div className={pStyles.field}><label>Método de pago</label>
                 <select>
-                  <option>Selecciona cliente…</option>
-                  <option>Carmen Ruiz · +34 611 222 333</option>
-                  <option>Javier Romero · +34 677 888 999</option>
-                  <option>Bufete Martín · +34 912 345 678</option>
-                  <option>Pedro Alonso · +34 622 111 222</option>
+                  <option>Transferencia</option>
+                  <option>Tarjeta</option>
+                  <option>Bizum</option>
+                  <option>Efectivo</option>
+                  <option>PayPal</option>
+                  <option>Stripe</option>
                 </select>
               </div>
             </div>
 
-            {/* TABLA CONCEPTOS */}
-            <div style={{ marginBottom:'.5rem' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.45rem' }}>
+            {/* CLIENTE */}
+            <div className={pStyles.clientBlock}>
+              <div className={pStyles.blockTitle}>Cliente *</div>
+              <select style={{width:'100%',padding:'.65rem .85rem',border:'1.5px solid #cbd5e1',borderRadius:8,fontSize:'.875rem',background:'#fff',fontFamily:'inherit'}}>
+                <option>Selecciona un cliente del CRM…</option>
+                <option>Carmen Ruiz · +34 611 222 333</option>
+                <option>Javier Romero · +34 677 888 999</option>
+                <option>Bufete Martín · +34 912 345 678</option>
+                <option>Pedro Alonso · +34 622 111 222</option>
+              </select>
+            </div>
+
+            {/* CONCEPTOS */}
+            <div style={{marginBottom:'.5rem'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'.45rem'}}>
                 <div className={pStyles.blockTitle}>Conceptos</div>
                 <button className={pStyles.copyBtn} onClick={() => navigator.clipboard.writeText(
-                  lines.map(l=>`${l.desc}\t${l.workers}\t${l.price}€\t${fmt(l.workers*l.price*(1+l.tax/100))}`).join('\n')
+                  lines.map(l=>`${l.desc}\t${l.workers}\t${l.price}€`).join('\n')
                 )}>⎘ Copiar tabla</button>
               </div>
               <div className={pStyles.linesHeader}>
@@ -125,7 +174,7 @@ export default function Presupuestos() {
                 <span></span>
               </div>
               {lines.map((l,i) => {
-                const lt = l.workers * l.price * (1-l.discount/100) * (1+l.tax/100)
+                const lt = l.workers*l.price*(1-l.discount/100)*(1+l.tax/100)
                 return (
                   <div key={i} className={pStyles.line}>
                     <input value={l.desc} onChange={e=>updateLine(i,'desc',e.target.value)} placeholder="Servicio o concepto" />
@@ -144,9 +193,9 @@ export default function Presupuestos() {
 
             {/* TOTALES */}
             <div className={pStyles.totalsRow}>
-              <div className={pStyles.field} style={{flex:1, maxWidth:340}}>
+              <div className={pStyles.field} style={{flex:1,maxWidth:340}}>
                 <label>Notas / condiciones</label>
-                <textarea placeholder="Condiciones de pago, validez, observaciones…" rows={3}
+                <textarea placeholder="Condiciones de pago, datos bancarios…" rows={3}
                   style={{width:'100%',padding:'.65rem .85rem',border:'1.5px solid #cbd5e1',borderRadius:8,fontSize:'.875rem',fontFamily:'inherit',resize:'vertical'}} />
               </div>
               <div className={pStyles.totalsBox}>
@@ -160,42 +209,44 @@ export default function Presupuestos() {
               </div>
             </div>
 
-            {/* FOOTER */}
             <div className={pStyles.formFoot}>
               <button className={styles.btnGhost} onClick={() => setShowForm(false)}>Cancelar</button>
               <button className={pStyles.pdfBtn}>📄 Generar PDF</button>
-              <button className={styles.btnDark} onClick={() => setShowForm(false)}>Guardar presupuesto ✓</button>
+              <button className={styles.btnDark} onClick={() => setShowForm(false)}>Guardar factura ✓</button>
             </div>
           </div>
         )}
 
-        {/* LISTA */}
+        {/* LISTA FACTURAS */}
         <div className={styles.card} style={{padding:0}}>
           <table className={styles.tbl}>
             <thead>
               <tr><th>N.Trabajo</th><th>Número</th><th>Cliente</th><th>Fecha</th><th>Importe</th><th>Estado</th><th></th></tr>
             </thead>
             <tbody>
-              {DOCS.map(d => {
-                const [bg,color] = STATUS_COLOR[d.status]
+              {INVOICES.map(f => {
+                const [bg,color] = STATUS_COLOR[f.status]
                 return (
-                  <tr key={d.id}>
-                    <td style={{color:'#64748b',fontWeight:600}}>{d.wnum}</td>
-                    <td><strong>{d.num}</strong></td>
-                    <td>{d.client}</td>
-                    <td style={{color:'#64748b'}}>{d.date}</td>
-                    <td><strong>{fmt(d.amount)}</strong></td>
+                  <tr key={f.id}>
+                    <td style={{color:'#64748b',fontWeight:600}}>{f.wnum}</td>
+                    <td>
+                      <strong>{f.num}</strong>
+                      {f.fromQuote && <span style={{marginLeft:'.4rem',fontSize:'.65rem',color:'#64748b',background:'#f1f5f9',padding:'.1rem .35rem',borderRadius:4}}>desde presupuesto</span>}
+                    </td>
+                    <td>{f.client}</td>
+                    <td style={{color:'#64748b'}}>{f.date}</td>
+                    <td><strong>{fmt(f.amount)}</strong></td>
                     <td>
                       <span style={{background:bg,color,padding:'.18rem .55rem',borderRadius:20,fontSize:'.66rem',fontWeight:700,textTransform:'uppercase',display:'inline-flex',alignItems:'center',gap:'.25rem'}}>
                         <span style={{width:5,height:5,borderRadius:'50%',background:color,display:'inline-block'}} />
-                        {STATUS_LABEL[d.status]}
+                        {STATUS_LABEL[f.status]}
                       </span>
                     </td>
                     <td>
                       <div style={{display:'flex',gap:'.3rem',justifyContent:'flex-end'}}>
-                        {d.status==='accepted' && <button className={pStyles.convertBtn}>→ Factura</button>}
-                        {d.status==='sent' && <button className={pStyles.acceptBtn}>✓ Aceptar</button>}
+                        {f.status==='sent' && <button className={pStyles.acceptBtn} style={{fontSize:'.72rem',padding:'.2rem .55rem'}}>✓ Cobrada</button>}
                         <button className={pStyles.editBtn}>✎</button>
+                        <button className={pStyles.pdfBtn} style={{padding:'.2rem .55rem',fontSize:'.72rem'}}>PDF</button>
                       </div>
                     </td>
                   </tr>
