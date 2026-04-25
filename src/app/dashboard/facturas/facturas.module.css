@@ -1,0 +1,56 @@
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,15,20,.45);
+  display: grid;
+  place-items: center;
+  z-index: 999;
+  padding: 1rem;
+}
+
+.modalBox {
+  width: min(960px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e2ddd4;
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.modalHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  border-bottom: 1px solid #e2ddd4;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.modalHead h2 {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 1.25rem;
+}
+
+.modalHead p {
+  margin: .3rem 0 0;
+  color: #64748b;
+  font-size: .85rem;
+}
+
+.modalSectionTitle {
+  font-size: .7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: #0a0f14;
+  margin: 1rem 0 .75rem;
+}
+
+@media (max-width: 760px) {
+  .modalBox {
+    padding: 1rem;
+  }
+}
