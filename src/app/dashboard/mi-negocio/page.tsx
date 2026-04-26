@@ -18,7 +18,9 @@ export default function MiNegocio() {
             </p>
           </div>
 
-          <button className={styles.btnGold}>Ver mi landing →</button>
+          <button onClick={() => window.open('/jardines-mediterraneos', '_blank')} className={styles.btnGold}>
+            Ver mi landing →
+          </button>
         </div>
 
         <div className={mStyles.layout}>
