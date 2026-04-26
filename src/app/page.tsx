@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 import styles from './page.module.css'
 
@@ -8,30 +9,33 @@ export default function Home() {
 
   return (
     <div className={styles.auth}>
-      <div className={styles.authSide}>
-        <div className={styles.authSideInner}>
+      <section className={styles.authSide}>
+        <div>
           <div className={styles.brand}>
-            Clientos <span className={styles.brandDot}></span>
+            Atelia <span className={styles.brandDot}></span>
           </div>
-          <div className={styles.tagline}>
-            Menos papel.<br />Más <em>clientes</em>.
-          </div>
+
+          <h1 className={styles.tagline}>
+            Menos papeleo.<br />
+            Más <em>clientes</em>.
+          </h1>
+
           <p className={styles.taglineSub}>
-            CRM + agenda + presupuestos + landing propia. Todo en uno para emprendedores sin tiempo.
+            La plataforma todo-en-uno para emprendedores que no tienen tiempo para perder en administración.
           </p>
         </div>
-        <div className={styles.pills}>
-          <span className={styles.pill}>Landing propia</span>
-          <span className={styles.pill}>CRM rápido</span>
-          <span className={styles.pill}>Presupuestos</span>
-          <span className={styles.pill}>Agenda</span>
-        </div>
-      </div>
 
-      <div className={styles.authMain}>
+        <div className={styles.pills}>
+          <span>✓ Landing propia</span>
+          <span>✓ CRM clientes</span>
+          <span>✓ Facturación</span>
+        </div>
+      </section>
+
+      <section className={styles.authMain}>
         <form className={styles.authForm}>
           <h2>Bienvenido de vuelta</h2>
-          <p className={styles.lead}>Entra y ponte al día en segundos.</p>
+          <p className={styles.lead}>Inicia sesión para gestionar tu negocio.</p>
 
           <div className={styles.field}>
             <label>Email</label>
@@ -54,20 +58,28 @@ export default function Home() {
           </div>
 
           <button type="submit" className={styles.btnDark}>
-            Iniciar sesión →
+            Iniciar sesión
           </button>
 
-          <div className={styles.authSep}>o</div>
+          <a className={styles.forgot} href="#">
+            ¿Olvidaste tu contraseña?
+          </a>
+
+          <div className={styles.authSep}>
+            <span></span>
+            <b>o</b>
+            <span></span>
+          </div>
 
           <button type="button" className={styles.btnGhost}>
-            ▶ Ver la demo completa
+            Probar con cuenta demo
           </button>
 
           <p className={styles.authFoot}>
-            ¿Sin cuenta? <a href="/register">Crear gratis</a>
+            ¿Aún no tienes cuenta? <a href="/register">Crear cuenta</a>
           </p>
         </form>
-      </div>
+      </section>
     </div>
   )
 }
