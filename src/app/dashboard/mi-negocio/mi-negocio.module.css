@@ -12,6 +12,68 @@
   gap: 1rem;
 }
 
+.sectionPrivate,
+.sectionPublic,
+.mediaCard {
+  background: var(--white);
+  border: 1px solid var(--bg3);
+  border-radius: var(--r2);
+  padding: 1.2rem;
+}
+
+.sectionPrivate {
+  border-left: 5px solid #1c2b3a;
+}
+
+.sectionPublic {
+  border-left: 5px solid var(--gold);
+}
+
+.sectionHead {
+  display: flex;
+  gap: .9rem;
+  align-items: flex-start;
+  margin-bottom: 1.15rem;
+  border-bottom: 1px solid var(--bg3);
+  padding-bottom: 1rem;
+}
+
+.sectionHead h2 {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.sectionHead p {
+  margin: .25rem 0 0;
+  color: var(--grey);
+  font-size: .84rem;
+  line-height: 1.4;
+}
+
+.badgePrivate,
+.badgePublic {
+  display: inline-flex;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  font-size: .62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+
+.badgePrivate {
+  background: #e2e8f0;
+  color: #1c2b3a;
+}
+
+.badgePublic {
+  background: #fdf3d6;
+  color: #92400e;
+}
+
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -24,13 +86,6 @@
   gap: .85rem;
 }
 
-.serviceRow {
-  display: grid;
-  grid-template-columns: .8fr 1.2fr;
-  gap: .85rem;
-  margin-top: .75rem;
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -39,10 +94,10 @@
 }
 
 .field label {
-  font-size: .68rem;
-  font-weight: 800;
+  font-size: .66rem;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: .5px;
+  letter-spacing: .55px;
   color: var(--ink2);
 }
 
@@ -61,7 +116,7 @@
 }
 
 .field textarea {
-  min-height: 110px;
+  min-height: 95px;
   resize: vertical;
   line-height: 1.45;
 }
@@ -74,9 +129,37 @@
   box-shadow: 0 0 0 3px rgba(10,15,20,.07);
 }
 
+.quickGroup {
+  border: 1px solid var(--bg3);
+  border-radius: var(--r2);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.quickGroup h3,
+.mediaCard h3 {
+  margin: 0 0 .8rem;
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--ink);
+}
+
+.serviceRow {
+  display: grid;
+  grid-template-columns: .8fr 1.2fr;
+  gap: .85rem;
+}
+
+.testimonialRow {
+  display: grid;
+  grid-template-columns: .45fr 1fr;
+  gap: .85rem;
+}
+
 .urlCard {
   background: var(--ink);
-  border-radius: var(--r);
+  border-radius: var(--r2);
   padding: 1.25rem;
 }
 
@@ -206,8 +289,13 @@
   .grid2,
   .grid3,
   .serviceRow,
+  .testimonialRow,
   .sideCol {
     grid-template-columns: 1fr;
+  }
+
+  .sectionHead {
+    flex-direction: column;
   }
 
   .actionsBottom {

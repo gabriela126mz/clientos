@@ -14,7 +14,7 @@ export default function MiNegocio() {
           <div>
             <h1 className={styles.phTitle}>Mi negocio</h1>
             <p className={styles.phSub}>
-              Configura los datos que aparecerán en tu landing pública.
+              Rellena lo esencial. Tu landing se genera automáticamente.
             </p>
           </div>
 
@@ -23,8 +23,15 @@ export default function MiNegocio() {
 
         <div className={mStyles.layout}>
           <div className={mStyles.mainCol}>
-            <div className={styles.card}>
-              <div className={styles.cardT}>Datos generales</div>
+
+            <section className={mStyles.sectionPrivate}>
+              <div className={mStyles.sectionHead}>
+                <span className={mStyles.badgePrivate}>Privado</span>
+                <div>
+                  <h2>Datos del negocio</h2>
+                  <p>Esto sirve para tu cuenta, contacto y facturación. No todo se muestra en la landing.</p>
+                </div>
+              </div>
 
               <div className={mStyles.grid2}>
                 <div className={mStyles.field}>
@@ -52,12 +59,12 @@ export default function MiNegocio() {
                 </div>
 
                 <div className={mStyles.field}>
-                  <label>Teléfono / WhatsApp</label>
+                  <label>WhatsApp</label>
                   <input defaultValue="+34 600 123 456" />
                 </div>
 
                 <div className={mStyles.field}>
-                  <label>Email contacto</label>
+                  <label>Email</label>
                   <input defaultValue="hola@jardinesmediterraneos.es" />
                 </div>
 
@@ -67,24 +74,17 @@ export default function MiNegocio() {
                 </div>
               </div>
 
-              <div className={mStyles.field}>
-                <label>Zona de trabajo</label>
-                <input defaultValue="Madrid, Pozuelo, Majadahonda y alrededores" />
-              </div>
-
               <div className={mStyles.grid2}>
                 <div className={mStyles.field}>
-                  <label>Dirección completa</label>
+                  <label>Dirección fiscal</label>
                   <input placeholder="C/ Olivos, 12, Madrid" />
                 </div>
 
                 <div className={mStyles.field}>
-                  <label>Horario de atención</label>
+                  <label>Horario</label>
                   <input defaultValue="Lunes a viernes · 9:00 a 18:00" />
                 </div>
-              </div>
 
-              <div className={mStyles.grid2}>
                 <div className={mStyles.field}>
                   <label>NIF / CIF</label>
                   <input placeholder="Para facturas" />
@@ -95,108 +95,109 @@ export default function MiNegocio() {
                   <input placeholder="ES91 2100…" />
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div className={styles.card}>
-              <div className={styles.cardT}>Landing — Hero principal</div>
+            <section className={mStyles.sectionPublic}>
+              <div className={mStyles.sectionHead}>
+                <span className={mStyles.badgePublic}>Landing pública</span>
+                <div>
+                  <h2>Lo que verá tu cliente</h2>
+                  <p>Con estos campos se genera una web tipo premium en menos de 2 minutos.</p>
+                </div>
+              </div>
 
               <div className={mStyles.field}>
                 <label>Titular principal</label>
-                <input defaultValue="Diseño, ejecución y cuidado de jardines" />
+                <input defaultValue="Un jardín a la altura de tu casa. Hoy y siempre." />
               </div>
 
               <div className={mStyles.field}>
                 <label>Subtítulo</label>
-                <input defaultValue="Creamos jardines elegantes, funcionales y pensados para durar." />
+                <input defaultValue="Diseño, ejecución y mantenimiento de jardines en Madrid." />
               </div>
 
               <div className={mStyles.field}>
-                <label>Texto de presentación</label>
-                <textarea defaultValue="Somos un equipo especializado en jardinería y paisajismo para viviendas, comunidades y negocios. Diseñamos, ejecutamos y mantenemos espacios verdes con criterio técnico y sensibilidad estética." />
+                <label>Presentación breve</label>
+                <textarea defaultValue="Creamos y cuidamos jardines elegantes, funcionales y pensados para durar. Trabajamos con viviendas, comunidades y empresas que buscan un resultado profesional." />
               </div>
 
-              <div className={mStyles.field}>
-                <label>Frase destacada</label>
-                <input defaultValue="Un jardín bien cuidado cambia la forma de vivir tu casa." />
-              </div>
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardT}>Servicios principales</div>
-
-              {[
-                {
-                  t: 'Diseño y paisajismo',
-                  d: 'Proyectamos jardines equilibrados, bonitos y adaptados al clima mediterráneo.',
-                },
-                {
-                  t: 'Obra y ejecución',
-                  d: 'Nos encargamos de la instalación, plantación, riego y acabados.',
-                },
-                {
-                  t: 'Mantenimiento',
-                  d: 'Cuidamos tu jardín durante todo el año para que siempre luzca impecable.',
-                },
-              ].map((s, i) => (
-                <div key={i} className={mStyles.serviceRow}>
-                  <div className={mStyles.field}>
-                    <label>Servicio {i + 1}</label>
-                    <input defaultValue={s.t} />
-                  </div>
-
-                  <div className={mStyles.field}>
-                    <label>Descripción</label>
-                    <input defaultValue={s.d} />
-                  </div>
+              <div className={mStyles.grid2}>
+                <div className={mStyles.field}>
+                  <label>Zona de trabajo</label>
+                  <input defaultValue="Madrid, Pozuelo, Majadahonda y alrededores" />
                 </div>
-              ))}
-            </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardT}>Confianza y diferenciadores</div>
-
-              <div className={mStyles.grid3}>
                 <div className={mStyles.field}>
                   <label>Años de experiencia</label>
                   <input defaultValue="12 años" />
                 </div>
+              </div>
 
-                <div className={mStyles.field}>
-                  <label>Tipo de cliente</label>
-                  <input defaultValue="Particulares, comunidades y empresas" />
-                </div>
+              <div className={mStyles.quickGroup}>
+                <h3>Servicios principales</h3>
 
-                <div className={mStyles.field}>
-                  <label>Compromiso</label>
-                  <input defaultValue="Presupuesto claro y trabajo cuidado" />
+                {[
+                  ['Diseño y paisajismo', 'Jardines pensados para madurar con belleza.'],
+                  ['Obra y ejecución', 'Precisión técnica, equipo propio y cero improvisación.'],
+                  ['Mantenimiento profesional', 'El mismo equipo que crea, mantiene.'],
+                ].map((s, i) => (
+                  <div key={i} className={mStyles.serviceRow}>
+                    <div className={mStyles.field}>
+                      <label>Servicio {i + 1}</label>
+                      <input defaultValue={s[0]} />
+                    </div>
+
+                    <div className={mStyles.field}>
+                      <label>Descripción</label>
+                      <input defaultValue={s[1]} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className={mStyles.quickGroup}>
+                <h3>Por qué elegirnos</h3>
+
+                <div className={mStyles.grid3}>
+                  <div className={mStyles.field}>
+                    <label>Punto 1</label>
+                    <input defaultValue="Equipo propio" />
+                  </div>
+
+                  <div className={mStyles.field}>
+                    <label>Punto 2</label>
+                    <input defaultValue="Presupuesto claro" />
+                  </div>
+
+                  <div className={mStyles.field}>
+                    <label>Punto 3</label>
+                    <input defaultValue="Trabajo cuidado" />
+                  </div>
                 </div>
               </div>
 
-              <div className={mStyles.grid3}>
-                <div className={mStyles.field}>
-                  <label>Beneficio 1</label>
-                  <input defaultValue="Diseño personalizado" />
-                </div>
+              <div className={mStyles.quickGroup}>
+                <h3>Reseñas / enamorados del servicio</h3>
 
-                <div className={mStyles.field}>
-                  <label>Beneficio 2</label>
-                  <input defaultValue="Equipo propio" />
-                </div>
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className={mStyles.testimonialRow}>
+                    <div className={mStyles.field}>
+                      <label>Nombre</label>
+                      <input placeholder={`Cliente ${n}`} />
+                    </div>
 
-                <div className={mStyles.field}>
-                  <label>Beneficio 3</label>
-                  <input defaultValue="Mantenimiento continuo" />
-                </div>
+                    <div className={mStyles.field}>
+                      <label>Reseña</label>
+                      <input placeholder="El servicio fue excelente..." />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardT}>WhatsApp y llamada a la acción</div>
 
               <div className={mStyles.grid2}>
                 <div className={mStyles.field}>
-                  <label>Texto del botón</label>
-                  <input defaultValue="Solicitar presupuesto por WhatsApp" />
+                  <label>Texto del botón WhatsApp</label>
+                  <input defaultValue="Solicitar presupuesto" />
                 </div>
 
                 <div className={mStyles.field}>
@@ -204,7 +205,7 @@ export default function MiNegocio() {
                   <input defaultValue="Hola, he visto vuestra web y quiero pedir información." />
                 </div>
               </div>
-            </div>
+            </section>
 
             <div className={mStyles.actionsBottom}>
               <button className={styles.btnGhost}>Descartar</button>
@@ -213,48 +214,39 @@ export default function MiNegocio() {
           </div>
 
           <aside className={mStyles.sideCol}>
-            <div className={styles.card}>
-              <div className={mStyles.urlCard}>
-                <div className={mStyles.urlLabel}>Tu URL pública</div>
+            <div className={mStyles.urlCard}>
+              <div className={mStyles.urlLabel}>Tu URL pública</div>
 
-                <div className={mStyles.urlBox}>
-                  clientos.app/jardines-mediterraneos
-                </div>
+              <div className={mStyles.urlBox}>
+                clientos.app/jardines-mediterraneos
+              </div>
 
-                <div className={mStyles.urlActions}>
-                  <button className={styles.btnGold}>Ver landing</button>
-                  <button className={mStyles.copyBtn}>⎘</button>
-                </div>
+              <div className={mStyles.urlActions}>
+                <button className={styles.btnGold}>Ver landing</button>
+                <button className={mStyles.copyBtn}>⎘</button>
               </div>
             </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardT}>Logo / foto de perfil</div>
-
+            <div className={mStyles.mediaCard}>
+              <h3>Logo</h3>
               <div className={mStyles.uploadZone}>
                 <input type="file" accept="image/*" />
                 <div className={mStyles.uploadIcon}>🖼️</div>
-                <div className={mStyles.uploadText}>
-                  <strong>Clic</strong> para subir logo
-                </div>
+                <div className={mStyles.uploadText}>Subir logo</div>
               </div>
             </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardT}>Imagen principal</div>
-
+            <div className={mStyles.mediaCard}>
+              <h3>Imagen principal</h3>
               <div className={mStyles.uploadZoneLarge}>
                 <input type="file" accept="image/*" />
                 <div className={mStyles.uploadIcon}>🌿</div>
-                <div className={mStyles.uploadText}>
-                  Foto hero para la landing
-                </div>
+                <div className={mStyles.uploadText}>Foto hero</div>
               </div>
             </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardT}>Galería de trabajos</div>
-
+            <div className={mStyles.mediaCard}>
+              <h3>Galería</h3>
               <div className={mStyles.galleryGrid}>
                 {[1, 2, 3].map((n) => (
                   <div key={n} className={mStyles.gallerySlot}>
