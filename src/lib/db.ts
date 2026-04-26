@@ -9,7 +9,7 @@ export async function getProfile(userId: string) {
     .from('profiles')
     .select('*')
     .eq('id', userId)
-    .single()
+   .maybeSingle()
   return { data, error }
 }
 
@@ -18,7 +18,7 @@ export async function createProfile(profile: Partial<Profile>) {
     .from('profiles')
     .insert(profile)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -28,7 +28,7 @@ export async function updateProfile(userId: string, updates: Partial<Profile>) {
     .update(updates)
     .eq('id', userId)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -37,7 +37,7 @@ export async function getProfileBySlug(slug: string) {
     .from('profiles')
     .select('*')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -58,7 +58,7 @@ export async function createClient(client: Partial<Client>) {
     .from('clients')
     .insert(client)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -68,7 +68,7 @@ export async function updateClient(id: string, updates: Partial<Client>) {
     .update(updates)
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -97,7 +97,7 @@ export async function createQuote(quote: Partial<Quote>, lines: Partial<QuoteLin
     .from('quotes')
     .insert(quote)
     .select()
-    .single()
+    .maybeSingle()
   if (quoteError || !quoteData) return { data: null, error: quoteError }
 
   if (lines.length > 0) {
@@ -116,7 +116,7 @@ export async function updateQuote(id: string, updates: Partial<Quote>) {
     .update(updates)
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -145,7 +145,7 @@ export async function createAppointment(appt: Partial<Appointment>) {
     .from('appointments')
     .insert(appt)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -155,7 +155,7 @@ export async function updateAppointment(id: string, updates: Partial<Appointment
     .update(updates)
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 

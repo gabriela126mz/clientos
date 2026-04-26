@@ -7,43 +7,60 @@ import styles from './page.module.css'
 
 export default function LoginPage() {
   const router = useRouter()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setErrorMsg('')
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
       password,
     })
 
+    console.log('LOGIN DATA:', data)
+    console.log('LOGIN ERROR:', error)
+
     if (error) {
-      if (error.message.includes('Email not confirmed')) {
-        setError('Confirma tu email antes de entrar. Revisa tu bandeja de entrada.')
-      } else if (error.message.includes('Invalid login')) {
-        setError('Email o contraseña incorrectos.')
+      setLoading(false)
+
+      if (error.message.toLowerCase().includes('invalid login')) {
+        setErrorMsg('Email o contraseña incorrectos.')
+      } else if (error.message.toLowerCase().includes('email not confirmed')) {
+        setErrorMsg('Confirma tu email antes de entrar.')
       } else {
-        setError(error.message)
+        setErrorMsg(error.message)
       }
 
-      setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    if (!data.session) {
+      setLoading(false)
+      setErrorMsg('No se pudo crear la sesión.')
+      return
+    }
+
+    console.log('SESION CREADA:', data.session)
+
+    setLoading(false)
+
+    // 🔥 REDIRECCIÓN FORZADA (esto evita todos los bugs)
+    window.location.href = '/dashboard'
   }
 
   return (
     <div className={styles.auth}>
+      {/* LADO IZQUIERDO */}
       <section className={styles.authSide}>
         <div>
           <div className={styles.brand}>
-            Atelia <span className={styles.brandDot}></span>
+            Clientos <span className={styles.brandDot}></span>
           </div>
 
           <h1 className={styles.tagline}>
@@ -52,7 +69,7 @@ export default function LoginPage() {
           </h1>
 
           <p className={styles.taglineSub}>
-            La plataforma todo-en-uno para emprendedores que no tienen tiempo para perder en administración.
+            CRM + agenda + presupuestos + landing propia. Todo en uno para emprendedores sin tiempo.
           </p>
         </div>
 
@@ -63,12 +80,15 @@ export default function LoginPage() {
         </div>
       </section>
 
+      {/* LADO DERECHO */}
       <section className={styles.authMain}>
         <form className={styles.authForm} onSubmit={handleLogin}>
           <h2>Bienvenido de vuelta</h2>
-          <p className={styles.lead}>Inicia sesión para gestionar tu negocio.</p>
+          <p className={styles.lead}>
+            Inicia sesión para gestionar tu negocio.
+          </p>
 
-          {error && (
+          {errorMsg && (
             <div
               style={{
                 background: '#fee2e2',
@@ -81,7 +101,7 @@ export default function LoginPage() {
                 borderLeft: '4px solid #dc2626',
               }}
             >
-              {error}
+              {errorMsg}
             </div>
           )}
 
@@ -94,7 +114,6 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              autoFocus
             />
           </div>
 
@@ -129,19 +148,9 @@ export default function LoginPage() {
             <span></span>
           </div>
 
-          <button
-            type="button"
-            className={styles.btnGhost}
-            onClick={() => {
-              setEmail('demo@atelia.app')
-              setPassword('demo123456')
-            }}
-          >
-            Probar con cuenta demo
-          </button>
-
           <p className={styles.authFoot}>
-            ¿Aún no tienes cuenta? <a href="/register">Crear cuenta</a>
+            ¿Aún no tienes cuenta?{' '}
+            <a href="/register">Crear cuenta</a>
           </p>
         </form>
       </section>

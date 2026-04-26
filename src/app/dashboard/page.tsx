@@ -1,6 +1,10 @@
 'use client'
 import Link from 'next/link'
 import styles from './page.module.css'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+
 
 const NAV = [
   { href: '/dashboard', label: 'Panel', section: 'General', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
@@ -14,14 +18,24 @@ const NAV = [
 ]
 
 export function Sidebar({ active }: { active: string }) {
+  const router = useRouter()
   let lastSection = ''
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
+  }
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>Clientos <span className={styles.brandDot}></span></div>
+
       <nav style={{ flex: 1 }}>
         {NAV.map(item => {
           const showSection = item.section && item.section !== lastSection
           if (showSection) lastSection = item.section
+
           return (
             <div key={item.href}>
               {showSection && <div className={styles.navSection}>{item.section}</div>}
@@ -32,6 +46,7 @@ export function Sidebar({ active }: { active: string }) {
           )
         })}
       </nav>
+
       <div className={styles.sbFoot}>
         <div className={styles.userChip}>
           <div className={styles.avatar}>G</div>
@@ -40,13 +55,42 @@ export function Sidebar({ active }: { active: string }) {
             <div className={styles.userRole}>Jardinería</div>
           </div>
         </div>
-        <button className={styles.logoutBtn}>Cerrar sesión</button>
+
+        <button className={styles.logoutBtn} onClick={handleLogout}>
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   )
 }
-
 export default function Dashboard() {
+  const router = useRouter()
+
+useEffect(() => {
+  const check = async () => {
+    const { data } = await supabase.auth.getSession()
+
+    if (!data.session) {
+      router.push('/')
+    }
+  }
+
+  check()
+}, [])
+
+    
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession()
+
+      if (!data.session) {
+        router.push('/')
+      }
+    }
+
+    checkSession()
+  }, [router])
   const today = new Date()
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const monthsFull = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
