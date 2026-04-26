@@ -19,7 +19,13 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('Email o contraseña incorrectos.')
+      if (error.message.includes('Email not confirmed')) {
+        setError('Confirma tu email antes de entrar. Revisa tu bandeja de entrada.')
+      } else if (error.message.includes('Invalid login')) {
+        setError('Email o contraseña incorrectos.')
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
       return
     }
@@ -55,48 +61,34 @@ export default function LoginPage() {
           <p className={styles.lead}>Entra y ponte al día en segundos.</p>
 
           {error && (
-            <div style={{
-              background: '#fee2e2', color: '#991b1b',
-              padding: '.75rem 1rem', borderRadius: 8,
-              fontSize: '.84rem', marginBottom: '1rem', fontWeight: 500
-            }}>
+            <div style={{ background:'#fee2e2', color:'#991b1b', padding:'.75rem 1rem', borderRadius:8, fontSize:'.84rem', marginBottom:'1rem', fontWeight:500, borderLeft:'3px solid #dc2626' }}>
               {error}
             </div>
           )}
 
           <div className={styles.field}>
             <label>Email</label>
-            <input
-              type="email" placeholder="tu@email.com"
-              value={email} onChange={e => setEmail(e.target.value)}
-              required autoComplete="email"
-            />
+            <input type="email" placeholder="tu@email.com" value={email}
+              onChange={e => setEmail(e.target.value)} required autoComplete="email" autoFocus />
           </div>
 
           <div className={styles.field}>
             <label>Contraseña</label>
-            <input
-              type="password" placeholder="••••••••"
-              value={password} onChange={e => setPassword(e.target.value)}
-              required autoComplete="current-password"
-            />
+            <input type="password" placeholder="••••••••" value={password}
+              onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
 
-          <button
-            type="submit"
-            className={styles.btnDark}
-            disabled={loading}
-            style={{ opacity: loading ? .7 : 1 }}
-          >
+          <button type="submit" className={styles.btnDark}
+            disabled={loading} style={{ opacity: loading ? .7 : 1, marginTop:'.25rem' }}>
             {loading ? 'Entrando…' : 'Iniciar sesión →'}
           </button>
 
-          <div className={styles.authFoot} style={{ marginTop: '.75rem' }}>
+          <div className={styles.authFoot} style={{ marginTop:'.75rem' }}>
             <a href="/forgot">¿Olvidaste tu contraseña?</a>
           </div>
-
+          <div className={styles.authSep}>o</div>
           <div className={styles.authFoot}>
-            ¿Sin cuenta? <a href="/register">Crear gratis</a>
+            ¿Sin cuenta? <a href="/register">Crear cuenta gratis</a>
           </div>
         </form>
       </div>
