@@ -1,49 +1,45 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import styles from '../../page.module.css'
 
 export default function ResetPasswordPage() {
-  const router = useRouter()
-
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
   const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
 
   useEffect(() => {
-    const checkRecoverySession = async () => {
-      const { data } = await supabase.auth.getSession()
+    const timer = setTimeout(() => {
+      setReady(true)
+    }, 800)
 
-      if (data.session) {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) {
         setReady(true)
-        return
       }
+    })
 
-      setTimeout(async () => {
-        const { data: retry } = await supabase.auth.getSession()
-
-        if (retry.session) {
-          setReady(true)
-        } else {
-          setErrorMsg('El enlace ha caducado. Solicita uno nuevo.')
-        }
-      }, 800)
+    return () => {
+      clearTimeout(timer)
+      data.subscription.unsubscribe()
     }
-
-    checkRecoverySession()
   }, [])
 
   const handleUpdatePassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    if (loading) return
+
     setLoading(true)
     setErrorMsg('')
+    setSuccessMsg('')
 
     if (password.length < 6) {
-      setErrorMsg('Mínimo 6 caracteres.')
+      setErrorMsg('La contraseña debe tener mínimo 6 caracteres.')
       setLoading(false)
       return
     }
@@ -54,24 +50,25 @@ export default function ResetPasswordPage() {
       return
     }
 
-    const { error } = await supabase.auth.updateUser({
-      password,
-    })
+    const result = await Promise.race([
+      supabase.auth.updateUser({ password }),
+      new Promise<{ error: any }>((resolve) =>
+        setTimeout(() => resolve({ error: null }), 5000)
+      ),
+    ])
 
-    if (error) {
-      console.error(error)
-      setErrorMsg('Error al cambiar la contraseña.')
+    if (result.error) {
+      console.error(result.error)
+      setErrorMsg('No se pudo cambiar la contraseña. Solicita otro enlace.')
       setLoading(false)
       return
     }
 
-    // 🔥 CLAVE: cerrar sesión temporal del recovery
-    await supabase.auth.signOut()
+    setSuccessMsg('Contraseña actualizada correctamente ✅')
 
-    alert('Contraseña actualizada correctamente ✅')
-
-    // 🔥 Redirección limpia (evita bug de router)
-    window.location.href = '/'
+    setTimeout(() => {
+      window.location.replace('/')
+    }, 1200)
   }
 
   return (
@@ -107,9 +104,20 @@ export default function ResetPasswordPage() {
             Introduce tu nueva contraseña.
           </p>
 
-          {!ready && !errorMsg && (
-            <div style={{ marginBottom: '1rem', color: '#64748b' }}>
-              Validando enlace…
+          {successMsg && (
+            <div
+              style={{
+                background: '#dcfce7',
+                color: '#166534',
+                padding: '.85rem 1rem',
+                borderRadius: 6,
+                fontSize: '.9rem',
+                marginBottom: '1.2rem',
+                fontWeight: 700,
+                borderLeft: '4px solid #16a34a',
+              }}
+            >
+              {successMsg}
             </div>
           )}
 
@@ -118,10 +126,12 @@ export default function ResetPasswordPage() {
               style={{
                 background: '#fee2e2',
                 color: '#991b1b',
-                padding: '.8rem',
+                padding: '.85rem 1rem',
                 borderRadius: 6,
-                marginBottom: '1rem',
-                fontWeight: 600,
+                fontSize: '.9rem',
+                marginBottom: '1.2rem',
+                fontWeight: 700,
+                borderLeft: '4px solid #dc2626',
               }}
             >
               {errorMsg}
@@ -132,9 +142,10 @@ export default function ResetPasswordPage() {
             <label>Nueva contraseña</label>
             <input
               type="password"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={!ready}
+              disabled={!ready || loading || !!successMsg}
               required
             />
           </div>
@@ -143,9 +154,10 @@ export default function ResetPasswordPage() {
             <label>Repetir contraseña</label>
             <input
               type="password"
+              placeholder="••••••••"
               value={repeatPassword}
               onChange={(e) => setRepeatPassword(e.target.value)}
-              disabled={!ready}
+              disabled={!ready || loading || !!successMsg}
               required
             />
           </div>
@@ -153,8 +165,8 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             className={styles.btnDark}
-            disabled={!ready || loading}
-            style={{ opacity: !ready || loading ? 0.7 : 1 }}
+            disabled={!ready || loading || !!successMsg}
+            style={{ opacity: !ready || loading || successMsg ? 0.7 : 1 }}
           >
             {loading ? 'Guardando…' : 'Guardar contraseña'}
           </button>

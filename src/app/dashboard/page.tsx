@@ -1,10 +1,10 @@
 'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import styles from './page.module.css'
-import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-
+import styles from './page.module.css'
 
 const NAV = [
   { href: '/dashboard', label: 'Panel', section: 'General', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
@@ -17,14 +17,21 @@ const NAV = [
   { href: '/dashboard/plan', label: 'Plan y pagos', section: 'Cuenta', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
 ]
 
-export function Sidebar({ active }: { active: string }) {
+export function Sidebar({
+  active,
+  sessionName = 'Usuario',
+  businessName = 'Negocio',
+}: {
+  active: string
+  sessionName?: string
+  businessName?: string
+}) {
   const router = useRouter()
   let lastSection = ''
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
@@ -49,10 +56,12 @@ export function Sidebar({ active }: { active: string }) {
 
       <div className={styles.sbFoot}>
         <div className={styles.userChip}>
-          <div className={styles.avatar}>G</div>
+          <div className={styles.avatar}>
+            {(sessionName || 'U').charAt(0).toUpperCase()}
+          </div>
           <div>
-            <div className={styles.userName}>Gabriela</div>
-            <div className={styles.userRole}>Jardinería</div>
+            <div className={styles.userName}>{sessionName}</div>
+            <div className={styles.userRole}>{businessName}</div>
           </div>
         </div>
 
@@ -63,34 +72,39 @@ export function Sidebar({ active }: { active: string }) {
     </aside>
   )
 }
+
 export default function Dashboard() {
   const router = useRouter()
-
-useEffect(() => {
-  const check = async () => {
-    const { data } = await supabase.auth.getSession()
-
-    if (!data.session) {
-      router.push('/')
-    }
-  }
-
-  check()
-}, [])
-
-    
+  const [sessionName, setSessionName] = useState('...')
+  const [businessName, setBusinessName] = useState('Negocio')
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession()
+    const loadUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      const user = data.user
 
-      if (!data.session) {
+      if (!user) {
         router.push('/')
+        return
       }
+
+      const name =
+        user.user_metadata?.nombre_contacto ||
+        user.user_metadata?.nombre_negocio ||
+        user.email?.split('@')[0] ||
+        'Emprendedor'
+
+      const business =
+        user.user_metadata?.nombre_negocio ||
+        'Mi negocio'
+
+      setSessionName(name)
+      setBusinessName(business)
     }
 
-    checkSession()
+    loadUser()
   }, [router])
+
   const today = new Date()
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const monthsFull = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -101,25 +115,27 @@ useEffect(() => {
   const offset = firstDay === 0 ? 6 : firstDay - 1
 
   const agenda = [
-    { time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', place: 'C/ Alcalá 45, Madrid', day: today.getDate() + 1, isToday: false },
-    { time: '16:30', title: 'Revisión riego', client: 'Javier Romero', place: 'Urb. Los Pinos, Pozuelo', day: today.getDate() + 3, isToday: false },
-    { time: '11:00', title: 'Entrega proyecto piscina', client: 'Pedro Alonso', place: 'Av. Principal 10, Madrid', day: today.getDate() + 7, isToday: false },
-    { time: '09:00', title: 'Presupuesto jardín', client: 'Lucía Navarro', place: 'C/ Olmos 3, Madrid', day: today.getDate() + 10, isToday: false },
+    { time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', place: 'C/ Alcalá 45, Madrid', day: today.getDate() + 1 },
+    { time: '16:30', title: 'Revisión riego', client: 'Javier Romero', place: 'Urb. Los Pinos, Pozuelo', day: today.getDate() + 3 },
+    { time: '11:00', title: 'Entrega proyecto piscina', client: 'Pedro Alonso', place: 'Av. Principal 10, Madrid', day: today.getDate() + 7 },
+    { time: '09:00', title: 'Presupuesto jardín', client: 'Lucía Navarro', place: 'C/ Olmos 3, Madrid', day: today.getDate() + 10 },
   ]
 
   const eventDays = new Set(agenda.map(a => a.day))
 
   return (
     <div className={styles.app}>
-      <Sidebar active="/dashboard" />
-      <main className={styles.main}>
+      <Sidebar active="/dashboard" sessionName={sessionName} businessName={businessName} />
 
-        {/* HEADER LIMPIO */}
+      <main className={styles.main}>
         <div className={styles.ph}>
           <div>
-            <h1 className={styles.phTitle}>Buenos días, Gabriela 👋</h1>
-            <p className={styles.phSub}>Jardines Mediterráneos · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            <h1 className={styles.phTitle}>Buenos días, {sessionName} 👋</h1>
+            <p className={styles.phSub}>
+              {businessName} · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
           </div>
+
           <div className={styles.phActions}>
             <Link href="/dashboard/clientes" className={styles.btnGhost}>+ Cliente</Link>
             <Link href="/dashboard/presupuestos" className={styles.btnGhost}>+ Presupuesto</Link>
@@ -127,7 +143,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* STATS — 4 cifras clave */}
         <div className={styles.stats}>
           {[
             { label: 'Clientes', value: '50', sub: '3 nuevos esta semana', color: 'gold' },
@@ -143,24 +158,21 @@ useEffect(() => {
           ))}
         </div>
 
-        {/* LAYOUT PRINCIPAL: agenda grande + calendario */}
         <div className={styles.dashMain}>
-
-          {/* AGENDA — protagonista */}
           <div className={styles.card}>
             <div className={styles.cardH}>
               <div className={styles.cardT}>📅 Próximas visitas</div>
               <Link href="/dashboard/agenda" className={styles.cardLink}>Ver agenda completa →</Link>
             </div>
+
             <div className={styles.agendaList}>
               {agenda.map((a, i) => (
                 <div key={i} className={styles.agendaItem}>
-                  {/* Fecha visual */}
                   <div className={styles.agendaDate}>
                     <span className={styles.agendaMonth}>{months[month]}</span>
                     <span className={styles.agendaDay}>{a.day}</span>
                   </div>
-                  {/* Info */}
+
                   <div className={styles.agendaInfo}>
                     <div className={styles.agendaTitle}>{a.title}</div>
                     <div className={styles.agendaClient}>
@@ -168,27 +180,30 @@ useEffect(() => {
                       <span className={styles.agendaPlace}>📍 {a.place}</span>
                     </div>
                   </div>
-                  {/* Hora */}
+
                   <div className={styles.agendaTime}>{a.time}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* CALENDARIO — compacto pero útil */}
           <div className={styles.card}>
             <div className={styles.cardH}>
               <div className={styles.cardT}>{monthsFull[month]} {year}</div>
             </div>
+
             <div className={styles.calGrid}>
               {['L','M','X','J','V','S','D'].map(d => (
                 <div key={d} className={styles.calDayName}>{d}</div>
               ))}
+
               {Array.from({ length: offset }).map((_, i) => <div key={`e${i}`} />)}
+
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const d = i + 1
                 const isToday = d === today.getDate()
                 const hasEvent = eventDays.has(d)
+
                 return (
                   <div key={d} className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}>
                     {d}
