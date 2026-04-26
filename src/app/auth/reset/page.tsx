@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import styles from '../../page.module.css'
 
+function clearSupabaseStorage() {
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('sb-')) localStorage.removeItem(key)
+  })
+  sessionStorage.clear()
+}
+
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
@@ -13,9 +20,7 @@ export default function ResetPasswordPage() {
   const [successMsg, setSuccessMsg] = useState('')
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setReady(true)
-    }, 800)
+    const timer = setTimeout(() => setReady(true), 800)
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' || session) {
@@ -31,7 +36,6 @@ export default function ResetPasswordPage() {
 
   const handleUpdatePassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
     if (loading) return
 
     setLoading(true)
@@ -67,7 +71,8 @@ export default function ResetPasswordPage() {
     setSuccessMsg('Contraseña actualizada correctamente ✅')
 
     setTimeout(() => {
-      window.location.replace('/')
+      clearSupabaseStorage()
+      window.location.replace('/?reset=ok')
     }, 1200)
   }
 
@@ -99,41 +104,34 @@ export default function ResetPasswordPage() {
       <section className={styles.authMain}>
         <form className={styles.authForm} onSubmit={handleUpdatePassword}>
           <h2>Restablecer contraseña</h2>
-
-          <p className={styles.lead}>
-            Introduce tu nueva contraseña.
-          </p>
+          <p className={styles.lead}>Introduce tu nueva contraseña.</p>
 
           {successMsg && (
-            <div
-              style={{
-                background: '#dcfce7',
-                color: '#166534',
-                padding: '.85rem 1rem',
-                borderRadius: 6,
-                fontSize: '.9rem',
-                marginBottom: '1.2rem',
-                fontWeight: 700,
-                borderLeft: '4px solid #16a34a',
-              }}
-            >
+            <div style={{
+              background: '#dcfce7',
+              color: '#166534',
+              padding: '.85rem 1rem',
+              borderRadius: 6,
+              fontSize: '.9rem',
+              marginBottom: '1.2rem',
+              fontWeight: 700,
+              borderLeft: '4px solid #16a34a',
+            }}>
               {successMsg}
             </div>
           )}
 
           {errorMsg && (
-            <div
-              style={{
-                background: '#fee2e2',
-                color: '#991b1b',
-                padding: '.85rem 1rem',
-                borderRadius: 6,
-                fontSize: '.9rem',
-                marginBottom: '1.2rem',
-                fontWeight: 700,
-                borderLeft: '4px solid #dc2626',
-              }}
-            >
+            <div style={{
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '.85rem 1rem',
+              borderRadius: 6,
+              fontSize: '.9rem',
+              marginBottom: '1.2rem',
+              fontWeight: 700,
+              borderLeft: '4px solid #dc2626',
+            }}>
               {errorMsg}
             </div>
           )}

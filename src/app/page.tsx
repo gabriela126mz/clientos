@@ -1,30 +1,43 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import styles from './page.module.css'
 
-export default function LoginPage() {
-  const router = useRouter()
+function clearSupabaseStorage() {
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('sb-')) localStorage.removeItem(key)
+  })
+  sessionStorage.clear()
+}
 
+export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [infoMsg, setInfoMsg] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+
+    if (params.get('reset') === 'ok') {
+      clearSupabaseStorage()
+      setInfoMsg('Contraseña actualizada. Ya puedes iniciar sesión.')
+      window.history.replaceState({}, '', '/')
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setErrorMsg('')
+    setInfoMsg('')
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     })
-
-    console.log('LOGIN DATA:', data)
-    console.log('LOGIN ERROR:', error)
 
     if (error) {
       setLoading(false)
@@ -46,17 +59,11 @@ export default function LoginPage() {
       return
     }
 
-    console.log('SESION CREADA:', data.session)
-
-    setLoading(false)
-
-    // 🔥 REDIRECCIÓN FORZADA (esto evita todos los bugs)
-    window.location.href = '/dashboard'
+    window.location.replace('/dashboard')
   }
 
   return (
     <div className={styles.auth}>
-      {/* LADO IZQUIERDO */}
       <section className={styles.authSide}>
         <div>
           <div className={styles.brand}>
@@ -80,27 +87,37 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* LADO DERECHO */}
       <section className={styles.authMain}>
         <form className={styles.authForm} onSubmit={handleLogin}>
           <h2>Bienvenido de vuelta</h2>
-          <p className={styles.lead}>
-            Inicia sesión para gestionar tu negocio.
-          </p>
+          <p className={styles.lead}>Inicia sesión para gestionar tu negocio.</p>
+
+          {infoMsg && (
+            <div style={{
+              background: '#dcfce7',
+              color: '#166534',
+              padding: '.85rem 1rem',
+              borderRadius: 6,
+              fontSize: '.9rem',
+              marginBottom: '1.2rem',
+              fontWeight: 700,
+              borderLeft: '4px solid #16a34a',
+            }}>
+              {infoMsg}
+            </div>
+          )}
 
           {errorMsg && (
-            <div
-              style={{
-                background: '#fee2e2',
-                color: '#991b1b',
-                padding: '.85rem 1rem',
-                borderRadius: 6,
-                fontSize: '.9rem',
-                marginBottom: '1.2rem',
-                fontWeight: 600,
-                borderLeft: '4px solid #dc2626',
-              }}
-            >
+            <div style={{
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '.85rem 1rem',
+              borderRadius: 6,
+              fontSize: '.9rem',
+              marginBottom: '1.2rem',
+              fontWeight: 600,
+              borderLeft: '4px solid #dc2626',
+            }}>
               {errorMsg}
             </div>
           )}
@@ -149,8 +166,7 @@ export default function LoginPage() {
           </div>
 
           <p className={styles.authFoot}>
-            ¿Aún no tienes cuenta?{' '}
-            <a href="/register">Crear cuenta</a>
+            ¿Aún no tienes cuenta? <a href="/register">Crear cuenta</a>
           </p>
         </form>
       </section>
