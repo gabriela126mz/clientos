@@ -23,11 +23,13 @@ export interface Client {
   phone: string
   email: string
   address: string
+  local: string | null
   tags: string
   notes: string
   estado: string
   avatar_url: string
   created_at: string
+
 }
 
 export interface Quote {

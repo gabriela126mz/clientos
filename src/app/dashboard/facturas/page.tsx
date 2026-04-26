@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { Sidebar } from '../page'
 import styles from '../page.module.css'
 import fStyles from './facturas.module.css'
@@ -137,6 +138,33 @@ const fmt = (n: number) =>
   })
 
 export default function Facturas() {
+    useEffect(() => {
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .maybeSingle()
+
+      if (error) {
+        console.error(error)
+        return
+      }
+
+      if (!data) return
+
+      setIssuer({
+        name: data.business_name || '',
+        nif: data.nif || '',
+        address: data.address || '',
+        city: data.city || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        iban: data.iban || '',
+      })
+    }
+
+    loadProfile()
+  },  [])
   const today = new Date().toISOString().split('T')[0]
 
   const [showForm, setShowForm] = useState(false)

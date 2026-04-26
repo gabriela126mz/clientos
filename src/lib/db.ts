@@ -44,31 +44,71 @@ export async function getProfileBySlug(slug: string) {
 /* ══════════════════════════════
    CLIENTS
 ══════════════════════════════ */
+/* ══════════════════════════════
+   CLIENTS
+══════════════════════════════ */
 export async function getClients(userId: string) {
   const { data, error } = await supabase
     .from('clients')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
+
+  return { data, error }
+}
+
+export async function getClientById(id: string, userId: string) {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
   return { data, error }
 }
 
 export async function createClient(client: Partial<Client>) {
   const { data, error } = await supabase
     .from('clients')
-    .insert(client)
+    .insert({
+      user_id: client.user_id,
+      name: client.name,
+      phone: client.phone || null,
+      email: client.email || null,
+      address: client.address || null,
+      local: client.local || null,
+      tags: client.tags || null,
+      notes: client.notes || null,
+      estado: client.estado || 'nuevo',
+      avatar_url: client.avatar_url || null,
+    })
     .select()
     .maybeSingle()
+
   return { data, error }
 }
 
 export async function updateClient(id: string, updates: Partial<Client>) {
+  const cleanUpdates = {
+    name: updates.name,
+    phone: updates.phone || null,
+    email: updates.email || null,
+    address: updates.address || null,
+    local: updates.local || null,
+    tags: updates.tags || null,
+    notes: updates.notes || null,
+    estado: updates.estado,
+    avatar_url: updates.avatar_url || null,
+  }
+
   const { data, error } = await supabase
     .from('clients')
-    .update(updates)
+    .update(cleanUpdates)
     .eq('id', id)
     .select()
     .maybeSingle()
+
   return { data, error }
 }
 
@@ -77,9 +117,9 @@ export async function deleteClient(id: string) {
     .from('clients')
     .delete()
     .eq('id', id)
+
   return { error }
 }
-
 /* ══════════════════════════════
    QUOTES
 ══════════════════════════════ */

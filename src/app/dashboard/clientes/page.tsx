@@ -26,7 +26,7 @@ export default function ClientesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Client | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name:'', phone:'', email:'', address:'', estado:'nuevo', tags:'', notes:'' })
+  const [form, setForm] = useState({ name:'', phone:'', email:'', address:'',  local:'', estado:'nuevo', tags:'', notes:'' })
 
   const load = useCallback(async () => {
     if (!user) return
@@ -55,38 +55,76 @@ export default function ClientesPage() {
 
   const openNew = () => {
     setEditing(null)
-    setForm({ name:'', phone:'', email:'', address:'', estado:'nuevo', tags:'', notes:'' })
+    setForm({ name:'', phone:'', email:'', address:'', estado:'nuevo', tags:'',  local:'', notes:'' })
     setShowModal(true)
   }
 
   const openEdit = (cl: Client) => {
     setEditing(cl)
-    setForm({ name:cl.name, phone:cl.phone||'', email:cl.email||'', address:cl.address||'', estado:cl.estado, tags:cl.tags||'', notes:cl.notes||'' })
+    setForm({ name:cl.name, phone:cl.phone||'', email:cl.email||'', address:cl.address||'',   local: cl.local || '', estado:cl.estado, tags:cl.tags||'', notes:cl.notes||'' })
     setShowModal(true)
   }
+const save = async (e: React.FormEvent) => {
+  e.preventDefault()
 
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !form.name.trim()) return
-    setSaving(true)
+  if (!user) {
+    alert('No hay sesión activa')
+    return
+  }
 
-    if (editing) {
-      await updateClient(editing.id, form)
-    } else {
-      await createClient({ ...form, user_id: user.id })
+  if (!form.name.trim()) {
+    alert('Escribe el nombre del cliente')
+    return
+  }
+
+  setSaving(true)
+
+  try {
+    const payload = {
+      user_id: user.id,
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      address: form.address.trim(),
+      local: form.local.trim(),
+      estado: form.estado,
+      tags: form.tags.trim(),
+      notes: form.notes.trim(),
     }
 
-    setSaving(false)
+    const result = editing
+      ? await updateClient(editing.id, payload)
+      : await createClient(payload)
+
+    if (result.error) {
+      console.error(result.error)
+      alert('Error al guardar cliente: ' + result.error.message)
+      return
+    }
+
     setShowModal(false)
-    load()
+    setEditing(null)
+    await load()
+  } catch (err) {
+    console.error(err)
+    alert('Error inesperado al guardar cliente')
+  } finally {
+    setSaving(false)
+  }
+}
+const remove = async (id: string) => {
+  if (!confirm('¿Eliminar este cliente?')) return
+
+  const { error } = await deleteClient(id)
+
+  if (error) {
+    console.error(error)
+    alert('Error al eliminar cliente: ' + error.message)
+    return
   }
 
-  const remove = async (id: string) => {
-    if (!confirm('¿Eliminar este cliente?')) return
-    await deleteClient(id)
-    load()
-  }
-
+  await load()
+}
   const changeEstado = async (id: string, estado: string) => {
     await updateClient(id, { estado })
     setClients(prev => prev.map(cl => cl.id === id ? { ...cl, estado } : cl))

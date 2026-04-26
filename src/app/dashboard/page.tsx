@@ -74,6 +74,18 @@ export function Sidebar({
 }
 
 export default function Dashboard() {
+  useEffect(() => {
+  const loadProfile = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .single()
+
+    console.log(data) // aquí tienes todo el negocio
+  }
+
+  loadProfile()
+}, [])
   const router = useRouter()
   const [sessionName, setSessionName] = useState('...')
   const [businessName, setBusinessName] = useState('Negocio')

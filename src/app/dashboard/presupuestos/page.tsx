@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { Sidebar } from '../page'
 import styles from '../page.module.css'
 import pStyles from './presupuestos.module.css'
@@ -62,6 +63,23 @@ const emptyLine = (): Line => ({
 })
 
 export default function Presupuestos() {
+    useEffect(() => {
+      const loadProfile = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .maybeSingle()
+
+        if (error) {
+          console.error(error)
+          return
+        }
+
+        console.log('Perfil cargado:', data)
+      }
+
+      loadProfile()
+    }, [])
   const [showForm, setShowForm] = useState(false)
   const [isExt, setIsExt] = useState(false)
   const [showExtModal, setShowExtModal] = useState(false)
