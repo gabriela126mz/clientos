@@ -209,45 +209,107 @@ const remove = async (id: string) => {
         )}
 
         {/* TABLE */}
-        {view === 'table' && list.length > 0 && (
-          <div className={styles.card} style={{ padding:0 }}>
-            <table className={styles.tbl}>
-              <thead><tr><th>Nombre</th><th>Teléfono</th><th>Estado</th><th>Alta</th><th></th></tr></thead>
-              <tbody>
-                {list.map(cl => (
-                  <tr key={cl.id} onClick={() => router.push(`/dashboard/clientes/${cl.id}`)}>
-                    <td>
-                      <div style={{ display:'flex', alignItems:'center', gap:'.65rem' }}>
-                        <div className={c.ccAv} style={{ background:ESTADO_BG[cl.estado], color:ESTADO_COLOR[cl.estado] }}>
-                          {cl.name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase()}
-                        </div>
-                        <div>
-                          <strong>{cl.name}</strong>
-                          {cl.notes && <div style={{ fontSize:'.73rem', color:'#64748b', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{cl.notes}</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ color:'#64748b', fontSize:'.82rem' }}>{cl.phone || '—'}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <select value={cl.estado} onChange={e => changeEstado(cl.id, e.target.value)}
-                        style={{ padding:'.22rem .5rem', borderRadius:20, fontSize:'.66rem', fontWeight:700, border:'none', cursor:'pointer', fontFamily:'inherit', background:ESTADO_BG[cl.estado], color:ESTADO_COLOR[cl.estado] }}>
-                        {Object.entries(ESTADO_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ color:'#64748b', fontSize:'.78rem' }}>{cl.created_at?.split('T')[0]}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div style={{ display:'flex', gap:'.15rem', justifyContent:'flex-end' }}>
-                        <button className={c.icoBtn} onClick={() => openEdit(cl)}>✎</button>
-                        <button className={`${c.icoBtn} ${c.del}`} onClick={() => remove(cl.id)}>🗑</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+    {view === 'table' && list.length > 0 && (
+  <div className={styles.card} style={{ padding:0 }}>
+    <table className={styles.tbl}>
+      
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Dirección</th>
+          <th>Estado</th>
+          <th>Notas</th>
+          <th></th>
+        </tr>
+      </thead>
 
+      <tbody>
+        {list.map(cl => (
+          <tr key={cl.id} onClick={() => router.push(`/dashboard/clientes/${cl.id}`)}>
+
+            {/* NOMBRE */}
+            <td>
+              <div style={{ display:'flex', alignItems:'center', gap:'.65rem' }}>
+                <div
+                  className={c.ccAv}
+                  style={{
+                    background: ESTADO_BG[cl.estado],
+                    color: ESTADO_COLOR[cl.estado]
+                  }}
+                >
+                  {cl.name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase()}
+                </div>
+
+                <div>
+                  <strong>{cl.name}</strong>
+
+                  {cl.local && (
+                    <div style={{ fontSize:'.75rem', fontWeight:700 }}>
+                      🏪 {cl.local}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </td>
+
+            {/* DIRECCIÓN */}
+            <td style={{ color:'#64748b', fontSize:'.82rem' }}>
+              {cl.address || '—'}
+            </td>
+
+            {/* ESTADO */}
+            <td onClick={e => e.stopPropagation()}>
+              <select
+                value={cl.estado}
+                onChange={e => changeEstado(cl.id, e.target.value)}
+                style={{
+                  padding:'.22rem .5rem',
+                  borderRadius:20,
+                  fontSize:'.66rem',
+                  fontWeight:700,
+                  border:'none',
+                  cursor:'pointer',
+                  fontFamily:'inherit',
+                  background: ESTADO_BG[cl.estado],
+                  color: ESTADO_COLOR[cl.estado]
+                }}
+              >
+                {Object.entries(ESTADO_LABEL).map(([k,v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </td>
+
+            {/* NOTAS */}
+            <td
+              style={{
+                color:'#64748b',
+                fontSize:'.78rem',
+                maxWidth:220,
+                overflow:'hidden',
+                textOverflow:'ellipsis',
+                whiteSpace:'nowrap'
+              }}
+            >
+              {cl.notes || '—'}
+            </td>
+
+            {/* ACCIONES */}
+            <td onClick={e => e.stopPropagation()}>
+              <div style={{ display:'flex', gap:'.15rem', justifyContent:'flex-end' }}>
+                <button className={c.icoBtn} onClick={() => openEdit(cl)}>✎</button>
+                <button className={`${c.icoBtn} ${c.del}`} onClick={() => remove(cl.id)}>🗑</button>
+              </div>
+            </td>
+
+          </tr>
+        ))}
+      </tbody>
+
+    </table>
+  </div>
+)}
+  
         {/* CARDS */}
         {view === 'cards' && list.length > 0 && (
           <div className={c.ccGrid}>
@@ -263,6 +325,17 @@ const remove = async (id: string) => {
                       <div style={{ minWidth:0 }}>
                         <div className={c.ccName}>{cl.name}</div>
                         <div className={c.ccPhone}>{cl.phone || cl.email || 'Sin contacto'}</div>
+                        {cl.local && (
+                        <div style={{ fontSize:'.74rem', color:'#0f172a', fontWeight:800, marginTop:'.25rem' }}>
+                          🏪 {cl.local}
+                        </div>
+                      )}
+
+                      {cl.address && (
+                        <div style={{ fontSize:'.73rem', color:'#64748b', marginTop:'.15rem' }}>
+                          📍 {cl.address}
+                        </div>
+                      )}
                       </div>
                     </div>
                     <span style={{ background:ESTADO_BG[cl.estado], color:ESTADO_COLOR[cl.estado], padding:'.18rem .5rem', borderRadius:20, fontSize:'.62rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'.3px', whiteSpace:'nowrap', flexShrink:0 }}>
