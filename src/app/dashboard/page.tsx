@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/context'
+import { getDashboardStats, getUpcomingCitas } from '@/lib/db'
+import type { Cita, DashboardStats } from '@/lib/types'
 import styles from './page.module.css'
 
 const NAV = [
@@ -17,19 +20,23 @@ const NAV = [
   { href: '/dashboard/plan', label: 'Plan y pagos', section: 'Cuenta', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
 ]
 
-export function Sidebar({
-  active,
-  sessionName = 'Usuario',
-  businessName = 'Negocio',
-}: {
-  active: string
-  sessionName?: string
-  businessName?: string
-}) {
-  const router = useRouter()
+export function Sidebar({ active }: { active: string }) {
+  const { user, profile } = useAuth()
   let lastSection = ''
 
+  const sessionName =
+    profile?.owner_name ||
+    (user?.user_metadata?.nombre_contacto as string | undefined) ||
+    user?.email?.split('@')[0] ||
+    'Emprendedor'
+
+  const businessName =
+    profile?.business_name ||
+    (user?.user_metadata?.nombre_negocio as string | undefined) ||
+    'Mi negocio'
+
   const handleLogout = async () => {
+    const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/'
   }
@@ -74,48 +81,44 @@ export function Sidebar({
 }
 
 export default function Dashboard() {
-  useEffect(() => {
-  const loadProfile = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .single()
-
-    console.log(data) // aquí tienes todo el negocio
-  }
-
-  loadProfile()
-}, [])
   const router = useRouter()
-  const [sessionName, setSessionName] = useState('...')
-  const [businessName, setBusinessName] = useState('Negocio')
+  const { user, profile, loading } = useAuth()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [citas, setCitas] = useState<Cita[]>([])
+
+  const sessionName =
+    profile?.owner_name ||
+    (user?.user_metadata?.nombre_contacto as string | undefined) ||
+    user?.email?.split('@')[0] ||
+    'Emprendedor'
+
+  const businessName =
+    profile?.business_name ||
+    (user?.user_metadata?.nombre_negocio as string | undefined) ||
+    'Mi negocio'
 
   useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      const user = data.user
-
-      if (!user) {
-        router.push('/')
-        return
-      }
-
-      const name =
-        user.user_metadata?.nombre_contacto ||
-        user.user_metadata?.nombre_negocio ||
-        user.email?.split('@')[0] ||
-        'Emprendedor'
-
-      const business =
-        user.user_metadata?.nombre_negocio ||
-        'Mi negocio'
-
-      setSessionName(name)
-      setBusinessName(business)
+    if (loading) return
+    if (!user) {
+      router.push('/')
+      return
     }
 
-    loadUser()
-  }, [router])
+    const load = async () => {
+      try {
+        const [statsData, citasResult] = await Promise.all([
+          getDashboardStats(user.id),
+          getUpcomingCitas(user.id, 4),
+        ])
+        setStats(statsData)
+        if (citasResult.data) setCitas(citasResult.data)
+      } catch (err) {
+        console.error('Error cargando dashboard:', err)
+      }
+    }
+
+    load()
+  }, [user, loading, router])
 
   const today = new Date()
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -126,18 +129,11 @@ export default function Dashboard() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const offset = firstDay === 0 ? 6 : firstDay - 1
 
-  const agenda = [
-    { time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', place: 'C/ Alcalá 45, Madrid', day: today.getDate() + 1 },
-    { time: '16:30', title: 'Revisión riego', client: 'Javier Romero', place: 'Urb. Los Pinos, Pozuelo', day: today.getDate() + 3 },
-    { time: '11:00', title: 'Entrega proyecto piscina', client: 'Pedro Alonso', place: 'Av. Principal 10, Madrid', day: today.getDate() + 7 },
-    { time: '09:00', title: 'Presupuesto jardín', client: 'Lucía Navarro', place: 'C/ Olmos 3, Madrid', day: today.getDate() + 10 },
-  ]
-
-  const eventDays = new Set(agenda.map(a => a.day))
+  const eventDays = new Set(citas.map(c => new Date(c.date + 'T00:00:00').getDate()))
 
   return (
     <div className={styles.app}>
-      <Sidebar active="/dashboard" sessionName={sessionName} businessName={businessName} />
+      <Sidebar active="/dashboard" />
 
       <main className={styles.main}>
         <div className={styles.ph}>
@@ -157,10 +153,36 @@ export default function Dashboard() {
 
         <div className={styles.stats}>
           {[
-            { label: 'Clientes', value: '50', sub: '3 nuevos esta semana', color: 'gold' },
-            { label: 'Cobrado este mes', value: '4.820€', sub: '3 facturas pagadas', color: 'green' },
-            { label: 'Por cobrar', value: '8.450€', sub: '5 presupuestos abiertos', color: 'blue' },
-            { label: 'Visitas esta semana', value: '3', sub: 'Próxima: mañana 10:00', color: 'accent' },
+            {
+              label: 'Clientes',
+              value: stats ? String(stats.clientes.total) : '—',
+              sub: stats ? `${stats.clientes.nuevosEstaSemana} nuevos esta semana` : 'Cargando...',
+              color: 'gold',
+            },
+            {
+              label: 'Cobrado este mes',
+              value: stats ? `${stats.facturas.cobrado.toLocaleString('es-ES')}€` : '—',
+              sub: stats ? `${stats.facturas.count} facturas` : 'Cargando...',
+              color: 'green',
+            },
+            {
+              label: 'Por cobrar',
+              value: stats ? `${stats.facturas.porCobrar.toLocaleString('es-ES')}€` : '—',
+              sub: stats
+                ? stats.presupuestos.abiertos > 0
+                  ? `${stats.presupuestos.abiertos.toLocaleString('es-ES')}€ en presupuestos`
+                  : 'Sin presupuestos abiertos'
+                : 'Cargando...',
+              color: 'blue',
+            },
+            {
+              label: 'Visitas esta semana',
+              value: stats ? String(stats.citas.estaSemana) : '—',
+              sub: citas.length > 0
+                ? `Próxima: ${citas[0].date} ${citas[0].time}`
+                : 'Sin visitas próximas',
+              color: 'accent',
+            },
           ].map(s => (
             <div key={s.label} className={`${styles.stat} ${styles[s.color as keyof typeof styles]}`}>
               <div className={styles.statLbl}>{s.label}</div>
@@ -178,22 +200,26 @@ export default function Dashboard() {
             </div>
 
             <div className={styles.agendaList}>
-              {agenda.map((a, i) => (
-                <div key={i} className={styles.agendaItem}>
+              {citas.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '.875rem' }}>
+                  Sin visitas programadas próximamente
+                </div>
+              ) : citas.map(c => (
+                <div key={c.id} className={styles.agendaItem}>
                   <div className={styles.agendaDate}>
-                    <span className={styles.agendaMonth}>{months[month]}</span>
-                    <span className={styles.agendaDay}>{a.day}</span>
+                    <span className={styles.agendaMonth}>{months[new Date(c.date + 'T00:00:00').getMonth()]}</span>
+                    <span className={styles.agendaDay}>{new Date(c.date + 'T00:00:00').getDate()}</span>
                   </div>
 
                   <div className={styles.agendaInfo}>
-                    <div className={styles.agendaTitle}>{a.title}</div>
+                    <div className={styles.agendaTitle}>{c.title}</div>
                     <div className={styles.agendaClient}>
-                      <span className={styles.agendaClientName}>{a.client}</span>
-                      <span className={styles.agendaPlace}>📍 {a.place}</span>
+                      <span className={styles.agendaClientName}>{c.client_name}</span>
+                      {c.place && <span className={styles.agendaPlace}>📍 {c.place}</span>}
                     </div>
                   </div>
 
-                  <div className={styles.agendaTime}>{a.time}</div>
+                  <div className={styles.agendaTime}>{c.time}</div>
                 </div>
               ))}
             </div>

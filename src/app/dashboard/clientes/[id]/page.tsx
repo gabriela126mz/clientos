@@ -1,48 +1,153 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { Sidebar } from '../../page'
 import styles from '../../page.module.css'
+import { useAuth } from '@/lib/context'
+import { createClient } from '@/lib/supabase/client'
+import type { Client } from '@/lib/types'
 
-const CLIENTES: Record<string, any> = {
-  c1: {
-    name: 'Carmen Ruiz',
-    tipo: 'VIP',
-    alta: '12/03/2026',
-    email: 'carmen@ejemplo.com',
-    tel: '+34611222333',
-    direccion: 'C/Alcalá 45, Madrid',
-    notas: 'Jardín de 300m² con olivo centenario.',
-    presupuesto: 'PRES-2026-001',
-    fechaPresupuesto: '10/04/2026',
-    importe: '689,7 €',
-    estadoPresupuesto: 'ENVIADO',
-    visitaFecha: '26/04/2026 · 10:00',
-    visitaTitulo: 'Visita técnica olivo',
-    visitaNota: 'Valorar estado tras tormenta.',
-  },
+interface Presupuesto {
+  id: string
+  numero: string
+  fecha: string
+  total: number
+  estado: string
+}
+
+interface Cita {
+  id: string
+  title: string
+  date: string
+  time: string
+  place: string
+  notes: string
+  estado: string
 }
 
 export default function ClienteDetalle() {
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   const params = useParams()
-  const id = String(params.id)
+  const supabase = createClient()
 
-  const cliente = CLIENTES[id] || {
-    name: 'Cliente',
-    tipo: 'Nuevo',
-    alta: '01/02/2026',
-    email: 'cliente@email.com',
-    tel: '+34 600 000 000',
-    direccion: 'Sin dirección',
-    notas: 'Sin notas registradas.',
-    presupuesto: 'PRES-2026-000',
-    fechaPresupuesto: '—',
-    importe: '—',
-    estadoPresupuesto: 'BORRADOR',
-    visitaFecha: '—',
-    visitaTitulo: 'Sin visita programada',
-    visitaNota: 'Añade una próxima visita para este cliente.',
+  const clientId = String(params.id)
+
+  const [cliente, setCliente] = useState<Client | null>(null)
+  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
+  const [citas, setCitas] = useState<Cita[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Cargar cliente
+  const loadCliente = useCallback(async () => {
+    if (!user || !clientId) return
+
+    setLoading(true)
+    try {
+      // Cargar cliente
+      const { data: clienteData, error: clienteError } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', clientId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (clienteError) {
+        console.error('Error cargando cliente:', clienteError)
+        return
+      }
+
+      setCliente(clienteData as Client)
+
+      // Cargar presupuestos
+      const { data: presupuestosData, error: presupuestosError } = await supabase
+        .from('presupuestos')
+        .select('id, numero, fecha, total, estado')
+        .eq('client_id', clientId)
+        .eq('user_id', user.id)
+        .order('fecha', { ascending: false })
+
+      if (!presupuestosError) {
+        setPresupuestos(presupuestosData || [])
+      }
+
+      // Cargar citas
+      const { data: citasData, error: citasError } = await supabase
+        .from('citas')
+        .select('id, title, date, time, place, notes, estado')
+        .eq('client_id', clientId)
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+
+      if (!citasError) {
+        setCitas(citasData || [])
+      }
+    } catch (err) {
+      console.error('Error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, clientId, supabase])
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      router.push('/')
+      return
+    }
+    loadCliente()
+  }, [authLoading, user, loadCliente, router])
+
+  if (loading) {
+    return (
+      <div className={styles.app}>
+        <Sidebar active="/dashboard/clientes" />
+        <main className={styles.main}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #e2ddd4', borderTopColor: '#2d5a27', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: '#64748b', fontSize: '.875rem' }}>Cargando cliente…</p>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        </main>
+      </div>
+    )
   }
+
+  if (!cliente) {
+    return (
+      <div className={styles.app}>
+        <Sidebar active="/dashboard/clientes" />
+        <main className={styles.main}>
+          <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>⚠️</div>
+            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '.5rem', color: '#1c2b3a' }}>
+              Cliente no encontrado
+            </div>
+            <button
+              onClick={() => router.push('/dashboard/clientes')}
+              style={{
+                marginTop: '1rem',
+                padding: '.65rem 1.1rem',
+                background: '#0a0f14',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: '.84rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Volver a clientes
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  const ultimoCita = citas[0]
+  const ultimoPresupuesto = presupuestos[0]
 
   return (
     <div className={styles.app}>
@@ -63,6 +168,7 @@ export default function ClienteDetalle() {
             textDecoration: 'none',
             fontSize: '14px',
             fontWeight: 600,
+            cursor: 'pointer',
           }}
         >
           ← Clientes
@@ -98,12 +204,13 @@ export default function ClienteDetalle() {
                 fontSize: '15px',
               }}
             >
-              {cliente.tipo} · Alta {cliente.alta}
+              {cliente.tags || 'Sin categoría'} · Alta {cliente.created_at?.split('T')[0]}
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
+              onClick={() => router.push(`/dashboard/clientes/${clientId}/editar`)}
               style={{
                 padding: '14px 28px',
                 borderRadius: '6px',
@@ -117,6 +224,7 @@ export default function ClienteDetalle() {
             </button>
 
             <button
+              onClick={() => router.push(`/dashboard/presupuestos/nuevo?client_id=${clientId}`)}
               style={{
                 padding: '14px 28px',
                 borderRadius: '6px',
@@ -140,6 +248,7 @@ export default function ClienteDetalle() {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* PRESUPUESTOS */}
             <div
               style={{
                 background: '#fff',
@@ -155,43 +264,52 @@ export default function ClienteDetalle() {
                   fontSize: '26px',
                 }}
               >
-                Historial
+                Presupuestos
               </h2>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f3f0ea' }}>
-                    <th style={th}>N°</th>
-                    <th style={th}>Fecha</th>
-                    <th style={th}>Importe</th>
-                    <th style={th}>Estado</th>
-                  </tr>
-                </thead>
+              {presupuestos.length > 0 ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f0ea' }}>
+                      <th style={th}>N°</th>
+                      <th style={th}>Fecha</th>
+                      <th style={th}>Importe</th>
+                      <th style={th}>Estado</th>
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  <tr>
-                    <td style={tdStrong}>{cliente.presupuesto}</td>
-                    <td style={td}>{cliente.fechaPresupuesto}</td>
-                    <td style={td}>{cliente.importe}</td>
-                    <td style={td}>
-                      <span
-                        style={{
-                          background: '#dbeafe',
-                          color: '#1d4ed8',
-                          padding: '7px 16px',
-                          borderRadius: '999px',
-                          fontSize: '12px',
-                          fontWeight: 800,
-                        }}
-                      >
-                        {cliente.estadoPresupuesto}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                  <tbody>
+                    {presupuestos.map(p => (
+                      <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/dashboard/presupuestos/${p.id}`)}>
+                        <td style={tdStrong}>{p.numero}</td>
+                        <td style={td}>{p.fecha}</td>
+                        <td style={td}>{p.total.toFixed(2)} €</td>
+                        <td style={td}>
+                          <span
+                            style={{
+                              background: getEstadoBg(p.estado),
+                              color: getEstadoColor(p.estado),
+                              padding: '7px 16px',
+                              borderRadius: '999px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                            }}
+                          >
+                            {getEstadoLabel(p.estado)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p style={{ color: '#64748b', margin: '1rem 0 0 0' }}>
+                  Sin presupuestos. <button onClick={() => router.push(`/dashboard/presupuestos/nuevo?client_id=${clientId}`)} style={{ color: '#2d5a27', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>Crear uno</button>
+                </p>
+              )}
             </div>
 
+            {/* CITAS */}
             <div
               style={{
                 background: '#fff',
@@ -207,28 +325,55 @@ export default function ClienteDetalle() {
                   fontSize: '26px',
                 }}
               >
-                Visitas
+                Visitas y citas
               </h2>
 
-              <div style={{ marginTop: '36px' }}>
-                <p style={{ margin: 0, color: '#64748b' }}>{cliente.visitaFecha}</p>
-                <strong style={{ display: 'block', marginTop: '6px' }}>
-                  {cliente.visitaTitulo}
-                </strong>
-                <p style={{ marginTop: '8px', color: '#64748b' }}>
-                  {cliente.visitaNota}
+              {citas.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {citas.map(c => (
+                    <div key={c.id} style={{ paddingBottom: '1.5rem', borderBottom: '1px solid #e5ddcf' }}>
+                      <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>
+                        {c.date} · {c.time}
+                      </p>
+                      <strong style={{ display: 'block', marginTop: '6px' }}>
+                        {c.title}
+                      </strong>
+                      {c.place && (
+                        <p style={{ marginTop: '4px', color: '#64748b', fontSize: '14px' }}>
+                          📍 {c.place}
+                        </p>
+                      )}
+                      {c.notes && (
+                        <p style={{ marginTop: '4px', color: '#64748b', fontSize: '14px' }}>
+                          {c.notes}
+                        </p>
+                      )}
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '8px',
+                          background: getEstadoBg(c.estado),
+                          color: getEstadoColor(c.estado),
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {getEstadoLabel(c.estado)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#64748b', margin: '1rem 0 0 0' }}>
+                  Sin citas programadas. <button onClick={() => router.push(`/dashboard/agenda?client_id=${clientId}`)} style={{ color: '#2d5a27', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>Crear una</button>
                 </p>
-              </div>
-
-              <div
-                style={{
-                  borderTop: '1px solid #e5ddcf',
-                  marginTop: '18px',
-                }}
-              />
+              )}
             </div>
           </div>
 
+          {/* SIDEBAR - FICHA */}
           <aside
             style={{
               background: '#fff',
@@ -248,10 +393,42 @@ export default function ClienteDetalle() {
               Ficha
             </h2>
 
-            <FichaItem label="Email" value={cliente.email} />
-            <FichaItem label="Teléfono" value={cliente.tel} />
-            <FichaItem label="Dirección" value={cliente.direccion} />
-            <FichaItem label="Notas" value={cliente.notas} />
+            <FichaItem label="Email" value={cliente.email || '—'} />
+            <FichaItem label="Teléfono" value={cliente.phone || '—'} />
+            <FichaItem label="Dirección" value={cliente.address || '—'} />
+            <FichaItem label="Local" value={cliente.local || '—'} />
+            <FichaItem label="Estado" value={cliente.estado || '—'} />
+            <FichaItem label="Notas" value={cliente.notes || '—'} />
+
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5ddcf' }}>
+              <button
+                onClick={async () => {
+                  if (confirm('¿Eliminar este cliente?')) {
+                    const { error } = await supabase
+                      .from('clientes')
+                      .delete()
+                      .eq('id', clientId)
+
+                    if (!error) {
+                      router.push('/dashboard/clientes')
+                    }
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '.5rem',
+                  background: '#fcebeb',
+                  color: '#991f1f',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
+              >
+                🗑️ Eliminar cliente
+              </button>
+            </div>
           </aside>
         </section>
       </main>
@@ -294,7 +471,58 @@ function FichaItem({ label, value }: { label: string; value: string }) {
       >
         {label}
       </div>
-      <div style={{ fontSize: '15px', color: '#071018' }}>{value}</div>
+      <div style={{ fontSize: '15px', color: '#071018', wordBreak: 'break-word' }}>
+        {value}
+      </div>
     </div>
   )
+}
+
+// Funciones auxiliares para estados
+function getEstadoBg(estado: string): string {
+  const map: Record<string, string> = {
+    borrador: '#f3f0ea',
+    enviado: '#dbeafe',
+    aceptado: '#dcfce7',
+    rechazado: '#fcebeb',
+    pendiente: '#fdf3d6',
+    confirmada: '#dcfce7',
+    completada: '#dcfce7',
+    cancelada: '#fcebeb',
+    pagada: '#dcfce7',
+    vencida: '#fcebeb',
+  }
+  return map[estado.toLowerCase()] || '#f3f0ea'
+}
+
+function getEstadoColor(estado: string): string {
+  const map: Record<string, string> = {
+    borrador: '#64748b',
+    enviado: '#1d4ed8',
+    aceptado: '#166534',
+    rechazado: '#991f1f',
+    pendiente: '#92400e',
+    confirmada: '#166534',
+    completada: '#166534',
+    cancelada: '#991f1f',
+    pagada: '#166534',
+    vencida: '#991f1f',
+  }
+  return map[estado.toLowerCase()] || '#64748b'
+}
+
+function getEstadoLabel(estado: string): string {
+  const map: Record<string, string> = {
+    borrador: 'Borrador',
+    enviado: 'Enviado',
+    aceptado: 'Aceptado',
+    rechazado: 'Rechazado',
+    pendiente: 'Pendiente',
+    confirmada: 'Confirmada',
+    completada: 'Completada',
+    cancelada: 'Cancelada',
+    pagada: 'Pagada',
+    vencida: 'Vencida',
+  }
+  return map[estado.toLowerCase()] || estado
 }

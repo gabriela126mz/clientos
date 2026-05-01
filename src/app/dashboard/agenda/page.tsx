@@ -1,53 +1,149 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Sidebar } from '../page'
 import styles from '../page.module.css'
 import aStyles from './agenda.module.css'
+import { useAuth } from '@/lib/context'
+import { createClient } from '@/lib/supabase/client'
+import type { Client } from '@/lib/types'
 
 const MONTHS_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-const EVENT_COLORS = ['color0','color1','color2','color3','color4']
-const DOT_COLORS = ['#1c2b3a','#166534','#92400e','#991b1b','#1e40af']
+interface Cita {
+  id: string
+  client_id: string
+  client_name: string
+  title: string
+  date: string
+  time: string
+  place: string
+  notes: string
+  estado: string
+}
 
-const CLIENTES = ['Carmen Ruiz', 'Javier Romero', 'Bufete Martín', 'Ana Martín', 'Pedro Alonso', 'Carlos Díaz', 'Lucía Navarro', 'Silvia Ríos']
+// Colores consistentes para clientes
+const getClientColor = (clientName: string): string => {
+  const colors = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#e11d48', '#854d0e']
+  let hash = 0
+  for (let i = 0; i < clientName.length; i++) {
+    hash = ((hash << 5) - hash) + clientName.charCodeAt(i)
+    hash = hash & hash
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
 
-const INITIAL_EVENTS: Record<number, { id: string; time: string; title: string; client: string; notes: string; colorIdx: number }[]> = {
-  26: [
-    { id: 'e1', time: '10:00', title: 'Visita técnica olivo', client: 'Carmen Ruiz', notes: 'Revisar estado del olivo y valorar poda.', colorIdx: 0 },
-    { id: 'e2', time: '12:30', title: 'Presupuesto jardín', client: 'Ana Martín', notes: 'Medir zona y preparar presupuesto inicial.', colorIdx: 1 },
-  ],
-  28: [
-    { id: 'e3', time: '09:00', title: 'Mantenimiento', client: 'Bufete Martín', notes: 'Mantenimiento mensual de jardín.', colorIdx: 2 },
-    { id: 'e4', time: '16:30', title: 'Revisión riego', client: 'Javier Romero', notes: 'Comprobar programador y aspersores.', colorIdx: 0 },
-    { id: 'e5', time: '18:00', title: 'Entrega llaves', client: 'Lucía Navarro', notes: 'Recoger llaves para próxima visita.', colorIdx: 3 },
-  ],
-  30: [
-    { id: 'e6', time: '09:00', title: 'Mantenimiento mensual', client: 'Bufete Martín', notes: 'Realizado — cobrado.', colorIdx: 2 },
-  ],
-  2: [
-    { id: 'e7', time: '11:00', title: 'Entrega proyecto piscina', client: 'Pedro Alonso', notes: 'Presentar diseño final.', colorIdx: 4 },
-    { id: 'e8', time: '15:00', title: 'Visita nueva parcela', client: 'Carlos Díaz', notes: 'Ver terreno y orientación.', colorIdx: 1 },
-  ],
-  5: [
-    { id: 'e9', time: '10:00', title: 'Diseño jardín japonés', client: 'Silvia Ríos', notes: 'Primera visita de diseño.', colorIdx: 3 },
-  ],
+const getClientBg = (color: string): string => {
+  const bgMap: Record<string, string> = {
+    '#2563eb': '#dbeafe',
+    '#dc2626': '#fcebeb',
+    '#16a34a': '#dcfce7',
+    '#ea580c': '#ffedd5',
+    '#9333ea': '#f3e8ff',
+    '#0891b2': '#cffafe',
+    '#e11d48': '#ffe4e6',
+    '#854d0e': '#fef3c7',
+  }
+  return bgMap[color] || '#f3f0ea'
+}
+
+const getClientTextColor = (color: string): string => {
+  const textMap: Record<string, string> = {
+    '#2563eb': '#1d4ed8',
+    '#dc2626': '#991b1b',
+    '#16a34a': '#166534',
+    '#ea580c': '#c2410c',
+    '#9333ea': '#6b21a8',
+    '#0891b2': '#0e7490',
+    '#e11d48': '#be185d',
+    '#854d0e': '#92400e',
+  }
+  return textMap[color] || '#0a0f14'
 }
 
 export default function Agenda() {
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const supabase = createClient()
+
   const today = new Date()
   const [viewDate, setViewDate] = useState(today)
-  const [events, setEvents] = useState(INITIAL_EVENTS)
+  const [citas, setCitas] = useState<Cita[]>([])
+  const [clientes, setClientes] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
 
   const [showForm, setShowForm] = useState(false)
-  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [editingCitaId, setEditingCitaId] = useState<string | null>(null)
 
-  const [formDay, setFormDay] = useState(today.getDate())
-  const [formTitle, setFormTitle] = useState('')
+  const [formDate, setFormDate] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
   const [formTime, setFormTime] = useState('10:00')
-  const [formClient, setFormClient] = useState('')
+  const [formTitle, setFormTitle] = useState('')
+  const [formPlace, setFormPlace] = useState('')
   const [formNotes, setFormNotes] = useState('')
+  const [formClientId, setFormClientId] = useState('')
+  const [formClientName, setFormClientName] = useState('')
+  const [formEstado, setFormEstado] = useState('pendiente')
+
+  const [miniCalendarMonth, setMiniCalendarMonth] = useState(today.getMonth())
+  const [miniCalendarYear, setMiniCalendarYear] = useState(today.getFullYear())
+
+  // Cargar citas y clientes
+  const loadData = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    try {
+      // Cargar citas
+      const { data: citasData, error: citasError } = await supabase
+        .from('citas')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+
+      if (!citasError) {
+        setCitas(citasData || [])
+      }
+
+      // Cargar clientes
+      const { data: clientesData, error: clientesError } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name', { ascending: true })
+
+      if (!clientesError) {
+        setClientes(clientesData || [])
+      }
+    } catch (err) {
+      console.error('Error cargando datos:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, supabase])
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      router.push('/')
+      return
+    }
+    loadData()
+  }, [authLoading, user, loadData, router])
+
+  // Efecto separado para el client_id de URL (solo al cargar clientes)
+  useEffect(() => {
+    const clientId = searchParams.get('client_id')
+    if (clientId && clientes.length > 0) {
+      const cliente = clientes.find(c => c.id === clientId)
+      if (cliente) {
+        setFormClientId(clientId)
+        setFormClientName(cliente.name)
+        setShowForm(true)
+      }
+    }
+  }, [searchParams, clientes])
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -55,128 +151,158 @@ export default function Agenda() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const offset = firstDay === 0 ? 6 : firstDay - 1
 
-  const selectedEvents = selectedDay ? (events[selectedDay] || []) : []
+  // Citas del mes actual
+  const citasDelMes = citas.filter(c => {
+    const [y, m] = c.date.split('-')
+    return Number(y) === year && Number(m) === month + 1
+  })
 
-  const allEvents = Object.entries(events)
-    .sort(([a], [b]) => Number(a) - Number(b))
-    .flatMap(([day, evs]) => evs.map(ev => ({ ...ev, day: Number(day) })))
+  // Agrupar citas por día
+  const citasPorDia = citasDelMes.reduce((acc, cita) => {
+    const day = Number(cita.date.split('-')[2])
+    if (!acc[day]) acc[day] = []
+    acc[day].push(cita)
+    return acc
+  }, {} as Record<number, Cita[]>)
+
+  const selectedEvents = selectedDay ? (citasPorDia[selectedDay] || []) : []
+
+  // Próximas citas
+  const proximasCitas = citas
+    .filter(c => new Date(c.date + 'T' + c.time) >= new Date())
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .slice(0, 6)
 
   const resetForm = () => {
-    setEditingEventId(null)
-    setFormDay(selectedDay || today.getDate())
-    setFormTitle('')
+    setEditingCitaId(null)
+    setFormDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
     setFormTime('10:00')
-    setFormClient('')
+    setFormTitle('')
+    setFormPlace('')
     setFormNotes('')
+    setFormClientId('')
+    setFormClientName('')
+    setFormEstado('pendiente')
+    setMiniCalendarMonth(today.getMonth())
+    setMiniCalendarYear(today.getFullYear())
   }
 
-  const openNewVisit = (day?: number) => {
+  const openNewCita = (day?: number) => {
     resetForm()
-    setFormDay(day || selectedDay || today.getDate())
+    if (day) {
+      setFormDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`)
+    }
     setShowForm(true)
   }
 
-  const openEditVisit = (day: number, ev: any) => {
-    setEditingEventId(ev.id)
-    setFormDay(day)
-    setFormTitle(ev.title || '')
-    setFormTime(ev.time || '10:00')
-    setFormClient(ev.client || '')
-    setFormNotes(ev.notes || '')
+  const openEditCita = (cita: Cita) => {
+    setEditingCitaId(cita.id)
+    setFormDate(cita.date)
+    setFormTime(cita.time)
+    setFormTitle(cita.title)
+    setFormPlace(cita.place || '')
+    setFormNotes(cita.notes || '')
+    setFormClientId(cita.client_id)
+    setFormClientName(cita.client_name)
+    setFormEstado(cita.estado)
     setShowForm(true)
   }
 
-  const saveVisit = (e: React.FormEvent<HTMLFormElement>) => {
+  const saveCita = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!user) return
     if (!formTitle.trim()) {
-      alert('Escribe para qué es la visita')
+      alert('Escribe el título de la visita')
       return
     }
-
-    if (!formClient.trim()) {
+    if (!formClientId && !formClientName.trim()) {
       alert('Selecciona o escribe el cliente')
       return
     }
 
-    if (editingEventId) {
-      const updated: typeof events = {}
-
-      Object.entries(events).forEach(([day, evs]) => {
-        updated[Number(day)] = evs.filter(ev => ev.id !== editingEventId)
-      })
-
-      const currentEvents = updated[formDay] || []
-      updated[formDay] = [
-        ...currentEvents,
-        {
-          id: editingEventId,
-          time: formTime,
-          title: formTitle.trim(),
-          client: formClient.trim(),
-          notes: formNotes.trim(),
-          colorIdx: currentEvents.length % EVENT_COLORS.length,
-        },
-      ].sort((a, b) => a.time.localeCompare(b.time))
-
-      setEvents(updated)
-      alert('Visita actualizada correctamente ✅')
-    } else {
-      const dayEvents = events[formDay] || []
-
-      const newVisit = {
-        id: `e${Date.now()}`,
-        time: formTime,
-        title: formTitle.trim(),
-        client: formClient.trim(),
-        notes: formNotes.trim(),
-        colorIdx: dayEvents.length % EVENT_COLORS.length,
-      }
-
-      setEvents({
-        ...events,
-        [formDay]: [...dayEvents, newVisit].sort((a, b) => a.time.localeCompare(b.time)),
-      })
-
-      setSelectedDay(formDay)
-      alert('Visita creada correctamente ✅')
+    const payload = {
+      user_id: user.id,
+      client_id: formClientId || null,
+      client_name: formClientName.trim(),
+      title: formTitle.trim(),
+      date: formDate,
+      time: formTime,
+      place: formPlace.trim(),
+      notes: formNotes.trim(),
+      estado: formEstado,
     }
 
-    resetForm()
-    setShowForm(false)
+    try {
+      if (editingCitaId) {
+        const { error } = await supabase
+          .from('citas')
+          .update(payload)
+          .eq('id', editingCitaId)
+
+        if (error) {
+          alert('Error al actualizar: ' + error.message)
+          return
+        }
+      } else {
+        const { error } = await supabase
+          .from('citas')
+          .insert([payload])
+
+        if (error) {
+          alert('Error al crear: ' + error.message)
+          return
+        }
+      }
+
+      await loadData()
+      resetForm()
+      setShowForm(false)
+      alert(editingCitaId ? '✅ Cita actualizada' : '✅ Cita creada')
+    } catch (err) {
+      console.error(err)
+      alert('Error inesperado')
+    }
   }
 
-  const deleteVisit = () => {
-    if (!editingEventId) return
+  const deleteCita = async (id: string) => {
+    if (!confirm('¿Eliminar esta cita?')) return
 
-    const ok = confirm('¿Seguro que quieres eliminar esta visita?')
-    if (!ok) return
+    try {
+      const { error } = await supabase
+        .from('citas')
+        .delete()
+        .eq('id', id)
 
-    const updated: typeof events = {}
+      if (error) {
+        alert('Error: ' + error.message)
+        return
+      }
 
-    Object.entries(events).forEach(([day, evs]) => {
-      updated[Number(day)] = evs.filter(ev => ev.id !== editingEventId)
-    })
-
-    setEvents(updated)
-    resetForm()
-    setShowForm(false)
-    alert('Visita eliminada correctamente ✅')
+      await loadData()
+      resetForm()
+      setShowForm(false)
+      alert('✅ Cita eliminada')
+    } catch (err) {
+      console.error(err)
+      alert('Error inesperado')
+    }
   }
 
-  const deleteVisitById = (id: string) => {
-  const ok = confirm('¿Seguro que quieres eliminar esta visita?')
-  if (!ok) return
-
-  const updated: typeof events = {}
-
-  Object.entries(events).forEach(([day, evs]) => {
-    updated[Number(day)] = evs.filter(ev => ev.id !== id)
-  })
-
-  setEvents(updated)
-  alert('Visita eliminada correctamente ✅')
-}
+  if (loading) {
+    return (
+      <div className={styles.app}>
+        <Sidebar active="/dashboard/agenda" />
+        <main className={styles.main}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #e2ddd4', borderTopColor: '#2d5a27', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: '#64748b', fontSize: '.875rem' }}>Cargando agenda…</p>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.app}>
@@ -186,15 +312,16 @@ export default function Agenda() {
         <div className={styles.ph}>
           <div>
             <h1 className={styles.phTitle}>Agenda</h1>
-            <p className={styles.phSub}>Toca una visita para editarla o añade una nueva.</p>
+            <p className={styles.phSub}>Toca una cita para editarla o añade una nueva.</p>
           </div>
 
-          <button className={styles.btnDark} onClick={() => openNewVisit()}>
-            + Nueva visita
+          <button className={styles.btnDark} onClick={() => openNewCita()}>
+            + Nueva cita
           </button>
         </div>
 
         <div className={aStyles.layout}>
+          {/* CALENDARIO */}
           <div className={aStyles.calCard}>
             <div className={aStyles.calNav}>
               <button className={aStyles.calNavBtn} onClick={() => setViewDate(new Date(year, month - 1, 1))}>← Anterior</button>
@@ -212,7 +339,7 @@ export default function Agenda() {
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const d = i + 1
                 const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
-                const dayEvents = events[d] || []
+                const dayEvents = citasPorDia[d] || []
                 const isSelected = d === selectedDay
                 const maxShow = 2
 
@@ -224,19 +351,38 @@ export default function Agenda() {
                   >
                     <span className={aStyles.calDayNum}>{d}</span>
 
-                    {dayEvents.slice(0, maxShow).map((ev) => (
+                    {dayEvents.slice(0, maxShow).map((cita) => (
                       <button
-                        key={ev.id}
+                        key={cita.id}
                         type="button"
-                        className={`${aStyles.calEvent} ${aStyles[EVENT_COLORS[ev.colorIdx]]}`}
+                        className={aStyles.calEvent}
+                        style={{
+                          background: getClientBg(getClientColor(cita.client_name)),
+                          color: getClientTextColor(getClientColor(cita.client_name)),
+                          borderLeft: `3px solid ${getClientColor(cita.client_name)}`,
+                          fontSize: '.65rem',
+                          padding: '.35rem .4rem',
+                          lineHeight: '1.2',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '.1rem',
+                        }}
                         onClick={(e) => {
                           e.stopPropagation()
-                          openEditVisit(d, ev)
+                          openEditCita(cita)
                         }}
-                        title={`${ev.title} · ${ev.client}`}
+                        title={`${cita.title}\n${cita.time} · ${cita.client_name}${cita.place ? '\n📍 ' + cita.place : ''}${cita.notes ? '\n' + cita.notes : ''}`}
                       >
-                        <span className={aStyles.calEventTime}>{ev.time}</span>
-                        <span className={aStyles.calEventTitle}>{ev.client}</span>
+                        <span style={{ fontWeight: 700, fontSize: '.7rem' }}>{cita.time}</span>
+                        <span style={{ fontSize: '.6rem', fontWeight: 500 }}>{cita.client_name}</span>
+                        {cita.place && (
+                          <span style={{ fontSize: '.6rem', opacity: 0.85 }}>📍 {cita.place.slice(0, 15)}{cita.place.length > 15 ? '…' : ''}</span>
+                        )}
+                        {cita.notes && (
+                          <span style={{ fontSize: '.6rem', opacity: 0.75, fontStyle: 'italic' }}>
+                            {cita.notes.slice(0, 20)}{cita.notes.length > 20 ? '…' : ''}
+                          </span>
+                        )}
                       </button>
                     ))}
 
@@ -249,66 +395,87 @@ export default function Agenda() {
             </div>
           </div>
 
+          {/* SIDEBAR */}
           <div className={aStyles.sidePanel}>
             {selectedDay ? (
               <div className={styles.card}>
                 <div className={styles.cardH}>
                   <div className={styles.cardT}>
                     {selectedDay} de {MONTHS_FULL[month]}
-                    <span style={{ marginLeft:'.5rem', fontSize:'.78rem', color:'#64748b', fontWeight:400 }}>
-                      {selectedEvents.length} visita{selectedEvents.length !== 1 ? 's' : ''}
+                    <span style={{ marginLeft: '.5rem', fontSize: '.78rem', color: '#64748b', fontWeight: 400 }}>
+                      {selectedEvents.length} cita{selectedEvents.length !== 1 ? 's' : ''}
                     </span>
                   </div>
 
                   <button
                     className={styles.btnDark}
-                    style={{ padding:'.35rem .7rem', fontSize:'.78rem' }}
-                    onClick={() => openNewVisit(selectedDay)}
+                    style={{ padding: '.35rem .7rem', fontSize: '.78rem' }}
+                    onClick={() => openNewCita(selectedDay)}
                   >
                     + Añadir
                   </button>
                 </div>
 
-                {selectedEvents.length > 0 ? selectedEvents.map((ev) => (
+                {selectedEvents.length > 0 ? selectedEvents.map((cita) => (
                   <div
-                    key={ev.id}
+                    key={cita.id}
                     className={aStyles.evItem}
-                    onClick={() => openEditVisit(selectedDay, ev)}
+                    onClick={() => openEditCita(cita)}
                   >
-                    <div style={{ width:10, height:10, borderRadius:'50%', background: DOT_COLORS[ev.colorIdx], flexShrink:0, marginTop:'.35rem' }} />
-                    <div style={{ flex:1 }}>
-                      <div className={aStyles.evTitle}>{ev.title}</div>
-                      <div className={aStyles.evClient}>{ev.time} · {ev.client}</div>
+                    <div
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: getClientColor(cita.client_name),
+                        flexShrink: 0,
+                        marginTop: '.35rem',
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div className={aStyles.evTitle}>{cita.title}</div>
+                      <div className={aStyles.evClient}>{cita.time} · {cita.client_name}</div>
                     </div>
-                  <button
-                    className={aStyles.icoBtn}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      openEditVisit(selectedDay, ev)
-                    }}
-                  >
-                    ✎
-                  </button>
+                    <button
+                      className={aStyles.icoBtn}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openEditCita(cita)
+                      }}
+                    >
+                      ✎
+                    </button>
 
-                  <button
-                    className={`${aStyles.icoBtn} ${aStyles.del}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      deleteVisitById(ev.id)
-                    }}
-                  >
-                    🗑
-                  </button>
+                    <button
+                      className={`${aStyles.icoBtn} ${aStyles.del}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteCita(cita.id)
+                      }}
+                    >
+                      🗑
+                    </button>
                   </div>
                 )) : (
-                  <div style={{ padding:'1.5rem 0', textAlign:'center', color:'#94a3b8', fontSize:'.875rem' }}>
-                    Sin visitas este día.
+                  <div style={{ padding: '1.5rem 0', textAlign: 'center', color: '#94a3b8', fontSize: '.875rem' }}>
+                    Sin citas este día.
                     <br />
                     <button
-                      style={{ marginTop:'.65rem', padding:'.45rem .9rem', background:'#0a0f14', color:'#fff', border:'none', borderRadius:8, fontSize:'.82rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
-                      onClick={() => openNewVisit(selectedDay)}
+                      style={{
+                        marginTop: '.65rem',
+                        padding: '.45rem .9rem',
+                        background: '#0a0f14',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontSize: '.82rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                      onClick={() => openNewCita(selectedDay)}
                     >
-                      + Añadir visita
+                      + Añadir cita
                     </button>
                   </div>
                 )}
@@ -316,43 +483,61 @@ export default function Agenda() {
             ) : (
               <div className={styles.card}>
                 <div className={styles.cardH}>
-                  <div className={styles.cardT}>Próximas visitas</div>
+                  <div className={styles.cardT}>Próximas citas</div>
                 </div>
 
-                {allEvents.slice(0, 6).map((ev) => (
-                  <div
-                    key={ev.id}
-                    className={aStyles.evItem}
-                    onClick={() => {
-                      setSelectedDay(ev.day)
-                      openEditVisit(ev.day, ev)
-                    }}
-                  >
-                    <div className={aStyles.evDate}>
-                      <span style={{ fontSize:'.58rem', textTransform:'uppercase', color:'#64748b', fontWeight:700 }}>
-                        {MONTHS_FULL[month].slice(0,3)}
-                      </span>
-                      <span style={{ fontSize:'1.2rem', fontWeight:800, fontFamily:'Syne', lineHeight:1, color:'#0a0f14' }}>{ev.day}</span>
+                {proximasCitas.length > 0 ? proximasCitas.map((cita) => {
+                  const [y, m, d] = cita.date.split('-')
+                  return (
+                    <div
+                      key={cita.id}
+                      className={aStyles.evItem}
+                      onClick={() => {
+                        setSelectedDay(Number(d))
+                        openEditCita(cita)
+                      }}
+                    >
+                      <div className={aStyles.evDate}>
+                        <span style={{ fontSize: '.58rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>
+                          {MONTHS_FULL[Number(m) - 1].slice(0, 3)}
+                        </span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'Syne', lineHeight: 1, color: '#0a0f14' }}>
+                          {d}
+                        </span>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div className={aStyles.evTitle}>{cita.title}</div>
+                        <div className={aStyles.evClient}>{cita.time} · {cita.client_name}</div>
+                      </div>
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: getClientColor(cita.client_name),
+                          flexShrink: 0,
+                        }}
+                      />
                     </div>
-                    <div style={{ flex:1 }}>
-                      <div className={aStyles.evTitle}>{ev.title}</div>
-                      <div className={aStyles.evClient}>{ev.time} · {ev.client}</div>
-                    </div>
-                    <div style={{ width:8, height:8, borderRadius:'50%', background:DOT_COLORS[ev.colorIdx], flexShrink:0 }} />
+                  )
+                }) : (
+                  <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8', fontSize: '.875rem' }}>
+                    No hay citas próximas
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
         </div>
 
+        {/* MODAL */}
         {showForm && (
           <div className={aStyles.modalOverlay}>
             <div className={aStyles.modalBox}>
               <div className={aStyles.modalHead}>
                 <div>
-                  <h2>{editingEventId ? 'Editar visita' : 'Nueva visita'}</h2>
-                  <p>{editingEventId ? 'Modifica los datos de esta visita.' : 'Agenda una visita o seguimiento para un cliente.'}</p>
+                  <h2>{editingCitaId ? 'Editar cita' : 'Nueva cita'}</h2>
+                  <p>{editingCitaId ? 'Modifica los datos de esta cita.' : 'Agenda una cita o seguimiento.'}</p>
                 </div>
 
                 <button className={aStyles.modalClose} onClick={() => { resetForm(); setShowForm(false) }}>
@@ -360,19 +545,102 @@ export default function Agenda() {
                 </button>
               </div>
 
-              <form onSubmit={saveVisit} className={aStyles.modalForm}>
-                <div className={aStyles.field} style={{ gridColumn:'1/-1' }}>
-                  <label>¿Para qué es la visita? *</label>
-                  <input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Ej: Visita técnica inicial" autoFocus />
+              <form onSubmit={saveCita} className={aStyles.modalForm}>
+                <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
+                  <label>¿Cuál es la cita? *</label>
+                  <input
+                    value={formTitle}
+                    onChange={e => setFormTitle(e.target.value)}
+                    placeholder="Ej: Visita técnica inicial"
+                    autoFocus
+                  />
                 </div>
 
-                <div className={aStyles.field}>
-                  <label>Día</label>
-                  <select value={formDay} onChange={e => setFormDay(Number(e.target.value))}>
-                    {Array.from({ length: daysInMonth }).map((_, i) => (
-                      <option key={i + 1} value={i + 1}>{i + 1} de {MONTHS_FULL[month]}</option>
+                <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
+                  <label>Cliente *</label>
+                  {clientes.length > 0 ? (
+                    <select value={formClientId} onChange={e => {
+                      const selected = clientes.find(c => c.id === e.target.value)
+                      setFormClientId(e.target.value)
+                      if (selected) setFormClientName(selected.name)
+                    }}>
+                      <option value="">Selecciona un cliente…</option>
+                      {clientes.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={formClientName}
+                      onChange={e => setFormClientName(e.target.value)}
+                      placeholder="Nombre del cliente"
+                    />
+                  )}
+                </div>
+
+                {/* MINI CALENDARIO */}
+                <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
+                  <label>Fecha</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem', marginBottom: '.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setMiniCalendarMonth(m => m === 0 ? 11 : m - 1)}
+                      style={{ padding: '.35rem', fontSize: '.75rem', background: '#f3f0ea', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      ← {MONTHS_FULL[(miniCalendarMonth === 0 ? 11 : miniCalendarMonth - 1)].slice(0, 3)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMiniCalendarMonth(m => m === 11 ? 0 : m + 1)}
+                      style={{ padding: '.35rem', fontSize: '.75rem', background: '#f3f0ea', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      {MONTHS_FULL[(miniCalendarMonth === 11 ? 0 : miniCalendarMonth + 1)].slice(0, 3)} →
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '.35rem', marginBottom: '.75rem' }}>
+                    {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
+                      <div key={d} style={{ textAlign: 'center', fontSize: '.65rem', fontWeight: 700, color: '#64748b' }}>
+                        {d}
+                      </div>
                     ))}
-                  </select>
+
+                    {Array.from({ length: new Date(miniCalendarYear, miniCalendarMonth, 1).getDay() === 0 ? 6 : new Date(miniCalendarYear, miniCalendarMonth, 1).getDay() - 1 }).map((_, i) => (
+                      <div key={`e${i}`} />
+                    ))}
+
+                    {Array.from({ length: new Date(miniCalendarYear, miniCalendarMonth + 1, 0).getDate() }).map((_, i) => {
+                      const d = i + 1
+                      const dateStr = `${miniCalendarYear}-${String(miniCalendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                      const isSelected = formDate === dateStr
+
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setFormDate(dateStr)}
+                          style={{
+                            padding: '.3rem',
+                            borderRadius: 4,
+                            border: isSelected ? '2px solid #2d5a27' : '1px solid #e5ddcf',
+                            background: isSelected ? '#e8f5e9' : '#fff',
+                            fontSize: '.75rem',
+                            fontWeight: isSelected ? 700 : 400,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {d}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={e => setFormDate(e.target.value)}
+                    style={{ width: '100%', padding: '.5rem', border: '1px solid #cbd5e1', borderRadius: 4 }}
+                  />
                 </div>
 
                 <div className={aStyles.field}>
@@ -380,19 +648,29 @@ export default function Agenda() {
                   <input type="time" value={formTime} onChange={e => setFormTime(e.target.value)} />
                 </div>
 
-                <div className={aStyles.field} style={{ gridColumn:'1/-1' }}>
-                  <label>Cliente *</label>
-                  <select value={formClient} onChange={e => setFormClient(e.target.value)}>
-                    <option value="">Selecciona un cliente…</option>
-                    {CLIENTES.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                <div className={aStyles.field}>
+                  <label>Lugar</label>
+                  <input value={formPlace} onChange={e => setFormPlace(e.target.value)} placeholder="Ej: En casa del cliente" />
                 </div>
 
-                <div className={aStyles.field} style={{ gridColumn:'1/-1' }}>
+                <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>Notas</label>
-                  <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Qué llevar, qué revisar, estado del trabajo…" rows={4} />
+                  <textarea
+                    value={formNotes}
+                    onChange={e => setFormNotes(e.target.value)}
+                    placeholder="Qué llevar, qué revisar…"
+                    rows={3}
+                  />
+                </div>
+
+                <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
+                  <label>Estado</label>
+                  <select value={formEstado} onChange={e => setFormEstado(e.target.value)}>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="confirmada">Confirmada</option>
+                    <option value="completada">Completada</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
                 </div>
 
                 <div className={aStyles.modalActions}>
@@ -400,8 +678,19 @@ export default function Agenda() {
                     Cancelar
                   </button>
 
+                  {editingCitaId && (
+                    <button
+                      type="button"
+                      className={`${styles.btnGhost}`}
+                      style={{ color: '#991f1f', borderColor: '#fca5a5' }}
+                      onClick={() => deleteCita(editingCitaId)}
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  )}
+
                   <button type="submit" className={styles.btnDark}>
-                    Guardar
+                    {editingCitaId ? 'Guardar cambios' : 'Crear cita'}
                   </button>
                 </div>
               </form>
