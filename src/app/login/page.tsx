@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import styles from './page.module.css'
 
 const supabase = createClient()
 import styles from './page.module.css'
