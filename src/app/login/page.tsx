@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import styles from './page.module.css'
 
 const supabase = createClient()
-import styles from './page.module.css'
+
 
 export default function LoginPage() {
   const router = useRouter()
