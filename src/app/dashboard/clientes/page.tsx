@@ -113,7 +113,7 @@ export default function ClientesPage() {
 
       const result = editing
         ? await updateClient(editing.id, payload as any)
-        : await addClient(payload)
+        : await addClient(payload as any)
 
       if (result.error) {
         console.error(result.error)
