@@ -38,6 +38,7 @@ interface ProfileData {
   slug: string
   logo_url: string
   hero_image_url: string
+  zone: string
 }
 
 export default function MiNegocio() {
@@ -323,8 +324,8 @@ export default function MiNegocio() {
                   <div className={mStyles.field}>
                     <label>Zona de trabajo</label>
                     <input
-                      value={form.zone || ''}
-                      onChange={e => setForm({ ...form, zone: e.target.value })}
+                      value={(form as any).zone || ''}
+                      onChange={e => setForm({ ...form, zone: e.target.value } as any)}
                     />
                   </div>
 

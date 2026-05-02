@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Sidebar } from '../page'
 import styles from '../page.module.css'
@@ -62,7 +62,7 @@ const getClientTextColor = (color: string): string => {
   return textMap[color] || '#0a0f14'
 }
 
-export default function Agenda() {
+function AgendaContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -699,5 +699,17 @@ export default function Agenda() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function Agenda() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <p>Cargando agenda…</p>
+      </div>
+    }>
+      <AgendaContent />
+    </Suspense>
   )
 }
