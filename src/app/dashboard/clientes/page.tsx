@@ -181,8 +181,8 @@ export default function ClientesPage() {
     await load()
   }
 
-  const changeEstado = async (id: string, estado: string) => {
-    await updateClient(id, { estado })
+    const changeEstado = async (id: string, estado: 'nuevo' | 'contactado' | 'cita' | 'completado') => {
+    await updateClient(id, { estado } as any)
     setClients(prev => prev.map(cl => cl.id === id ? { ...cl, estado } : cl))
   }
 
