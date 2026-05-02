@@ -305,8 +305,8 @@ export default function ClientesPage() {
 
                     <td onClick={e => e.stopPropagation()}>
                       <select
-                        value={cl.estado}
-                        onChange={e => changeEstado(cl.id, e.target.value)}
+                        value={cl.estado || 'nuevo'}
+                       onChange={(e) => changeEstado(cl.id, e.target.value as 'nuevo' | 'contactado' | 'cita' | 'completado')}
                         style={{
                           padding:'.22rem .5rem',
                           borderRadius:20,
