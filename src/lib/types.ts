@@ -6,7 +6,7 @@ export interface Client {
   email?: string
   address?: string
   local?: string
-  estado: 'nuevo' | 'contactado' | 'cita' | 'completado'
+  estado: 'nuevo' | 'contactado' | 'cita' | 'completado' 
   tags?: string
   notes?: string
   created_at: string

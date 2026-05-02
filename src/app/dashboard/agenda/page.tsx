@@ -20,7 +20,7 @@ interface Cita {
   time: string
   place: string
   notes: string
-  estado: string
+  estado: 'nuevo' | 'contactado' | 'cita' | 'completado'
 }
 
 // Colores consistentes para clientes
