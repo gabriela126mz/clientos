@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -27,76 +26,99 @@ interface ProfileData {
   benefit_1: string
   benefit_2: string
   benefit_3: string
-  process_1_title: string
-  process_1_text: string
-  process_2_title: string
-  process_2_text: string
-  process_3_title: string
-  process_3_text: string
-  process_4_title: string
-  process_4_text: string
-  testimonial_1_name: string
-  testimonial_1_role: string
-  testimonial_1_text: string
-  testimonial_2_name: string
-  testimonial_2_role: string
-  testimonial_2_text: string
-  testimonial_3_name: string
-  testimonial_3_role: string
-  testimonial_3_text: string
-  faq_1_q: string
-  faq_1_a: string
-  faq_2_q: string
-  faq_2_a: string
-  faq_3_q: string
-  faq_3_a: string
-  faq_4_q: string
-  faq_4_a: string
+  cta_text: string
   whatsapp_message: string
   slug: string
   logo_url: string
   hero_image_url: string
-  gallery_urls?: string[]
+  zone: string
   color_primary?: string
   color_secondary?: string
   color_accent?: string
 }
 
-export default function PublicLanding() {
+const DEFAULT_DATA = {
+  name: 'Jardines Mediterráneos',
+  trade: 'Jardinería profesional',
+  phone: '+34600123456',
+  email: 'hola@jardinesmediterraneos.es',
+  city: 'Madrid',
+  address: 'C/ Olivos, 12, Madrid',
+  schedule: 'Lunes a viernes · 9:00–18:00',
+  headline: 'Jardines que',
+  headline2: 'enamoran.',
+  sub: 'Diseño, construcción y mantenimiento de jardines en Madrid. Equipo propio, presupuesto claro, sin sorpresas.',
+  about: 'Somos un equipo de jardineros apasionados que llevamos más de 12 años creando espacios verdes únicos en Madrid. Cada jardín es diferente, cada cliente también. Por eso escuchamos primero y diseñamos después.',
+  years: '12',
+  waText: 'Hola, he visto vuestra web y quiero pedir presupuesto sin compromiso.',
+  services: [
+    {
+      icon: '🌿',
+      name: 'Diseño y paisajismo',
+      desc: 'Proyectamos tu jardín desde cero: estudio del espacio, elección de plantas, materiales y estilo. Un jardín pensado para ti y para durar.',
+      img: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80',
+    },
+    {
+      icon: '🏗️',
+      name: 'Obra y ejecución',
+      desc: 'Transformamos el proyecto en realidad con equipo propio, sin subcontratas. Materiales de primera, trabajo limpio y plazos cumplidos.',
+      img: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&q=80',
+    },
+    {
+      icon: '✂️',
+      name: 'Mantenimiento',
+      desc: 'El mismo equipo que crea tu jardín lo cuida mes a mes. Poda, riego, abonados y tratamientos para que siempre esté en su mejor momento.',
+      img: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?w=600&q=80',
+    },
+  ],
+  gallery: [
+    'https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800&q=80',
+    'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80',
+    'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=800&q=80',
+    'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4e4?w=800&q=80',
+    'https://images.unsplash.com/photo-1572560521827-e9d87cb8e50a?w=800&q=80',
+    'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=800&q=80',
+  ],
+  testimonials: [
+    { name: 'Carmen R.', role: 'Propietaria en Pozuelo', text: 'Transformaron nuestro jardín por completo. Puntuales, limpios y el resultado fue exactamente lo que imaginábamos, incluso mejor.', stars: 5 },
+    { name: 'Bufete Martín', role: 'Empresa en Madrid Centro', text: 'Llevan el mantenimiento de nuestras terrazas hace 3 años. Siempre impecable y siempre puntuales. Los recomendamos a todos.', stars: 5 },
+    { name: 'Pedro A.', role: 'Chalet en Majadahonda', text: 'Sin sorpresas en el presupuesto. El jardín quedó tal como lo imaginábamos. Muy profesionales en todo momento.', stars: 5 },
+  ],
+}
+
+export default function LandingPage() {
   const params = useParams()
   const slug = params?.slug as string
   const supabase = createClient()
 
   const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [scrolled, setScrolled] = useState(false)
-  const [colors, setColors] = useState({ primary: '#c2185b', secondary: '#e91e63', accent: '#ffb6c1' })
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [formSent, setFormSent] = useState(false)
+  const [lb, setLb] = useState<number | null>(null)
+  const [form, setForm] = useState({ name: '', phone: '', email: '', service: '', msg: '' })
+  const [colors, setColors] = useState({ primary: '#2d5a27', secondary: '#3d7a35', accent: '#c8a96e' })
 
   useEffect(() => {
-    const load = async () => {
-      if (!slug) {
-        setLoading(false)
-        return
+    const loadProfile = async () => {
+      if (!slug) return
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('slug', slug)
+        .single()
+
+      if (data) {
+        setProfile(data as ProfileData)
+        const tradeConfig = getTradeConfig(data.trade)
+        setColors({
+          primary: data.color_primary || tradeConfig.colors.primary,
+          secondary: data.color_secondary || tradeConfig.colors.secondary,
+          accent: data.color_accent || tradeConfig.colors.accent,
+        })
       }
-      try {
-        const { data } = await supabase.from('profiles').select('*').eq('slug', slug).single()
-        if (data) {
-          setProfile(data as ProfileData)
-          const config = getTradeConfig(data.trade || 'emprendedor')
-          setColors({
-            primary: data.color_primary || config.colors.primary,
-            secondary: data.color_secondary || config.colors.secondary,
-            accent: data.color_accent || config.colors.accent,
-          })
-        }
-      } catch (err) {
-        console.error('Error loading profile:', err)
-      }
-      setLoading(false)
     }
-    load()
+    loadProfile()
   }, [slug, supabase])
 
   useEffect(() => {
@@ -105,348 +127,822 @@ export default function PublicLanding() {
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#faf7f2', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid #e2ddd4', borderTopColor: colors.primary, borderRadius: '50%', margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
-          <p style={{ color: '#64748b' }}>Cargando landing...</p>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) (e.target as HTMLElement).classList.add('vis') })
+      }, { threshold: 0.08 })
+      document.querySelectorAll('.a, .al, .ar').forEach(el => obs.observe(el))
+      return () => obs.disconnect()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
 
-  if (!profile) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#faf7f2', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🤷</div>
-          <h1>Landing no encontrada</h1>
-        </div>
-      </div>
-    )
-  }
+  const BIZ = profile ? {
+    name: profile.business_name,
+    trade: profile.trade,
+    phone: profile.phone,
+    email: profile.email,
+    city: profile.city,
+    address: profile.address,
+    schedule: '',
+    headline: profile.headline,
+    headline2: profile.subtitle,
+    sub: profile.intro_text,
+    about: profile.intro_text,
+    years: profile.experience_years,
+    waText: profile.whatsapp_message,
+    services: [
+      { icon: '🌿', name: profile.service_1_title, desc: profile.service_1_desc, img: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80' },
+      { icon: '🏗️', name: profile.service_2_title, desc: profile.service_2_desc, img: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&q=80' },
+      { icon: '✂️', name: profile.service_3_title, desc: profile.service_3_desc, img: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?w=600&q=80' },
+    ],
+    gallery: DEFAULT_DATA.gallery,
+    testimonials: DEFAULT_DATA.testimonials,
+  } : DEFAULT_DATA
 
-  const tradeConfig = getTradeConfig(profile.trade || 'emprendedor')
-
-  const safe = {
-    business_name: profile?.business_name?.trim() ? profile.business_name : 'Mi Negocio',
-    headline: profile?.headline?.trim() ? profile.headline : tradeConfig.defaultHeadline,
-    subtitle: profile?.subtitle?.trim() ? profile.subtitle : tradeConfig.defaultSubtitle,
-    intro_text: profile?.intro_text?.trim() ? profile.intro_text : tradeConfig.defaultIntro,
-    service_1_title: profile?.service_1_title?.trim() ? profile.service_1_title : tradeConfig.defaultServices[0]?.name || 'Servicio 1',
-    service_1_desc: profile?.service_1_desc?.trim() ? profile.service_1_desc : tradeConfig.defaultServices[0]?.desc || 'Descripción',
-    service_2_title: profile?.service_2_title?.trim() ? profile.service_2_title : tradeConfig.defaultServices[1]?.name || 'Servicio 2',
-    service_2_desc: profile?.service_2_desc?.trim() ? profile.service_2_desc : tradeConfig.defaultServices[1]?.desc || 'Descripción',
-    service_3_title: profile?.service_3_title?.trim() ? profile.service_3_title : tradeConfig.defaultServices[2]?.name || 'Servicio 3',
-    service_3_desc: profile?.service_3_desc?.trim() ? profile.service_3_desc : tradeConfig.defaultServices[2]?.desc || 'Descripción',
-    benefit_1: profile?.benefit_1?.trim() ? profile.benefit_1 : tradeConfig.defaultBenefits[0] || 'Beneficio 1',
-    benefit_2: profile?.benefit_2?.trim() ? profile.benefit_2 : tradeConfig.defaultBenefits[1] || 'Beneficio 2',
-    benefit_3: profile?.benefit_3?.trim() ? profile.benefit_3 : tradeConfig.defaultBenefits[2] || 'Beneficio 3',
-    process_1_title: profile?.process_1_title?.trim() ? profile.process_1_title : tradeConfig.defaultProcess[0]?.title || 'Paso 1',
-    process_1_text: profile?.process_1_text?.trim() ? profile.process_1_text : tradeConfig.defaultProcess[0]?.text || 'Descripción',
-    process_2_title: profile?.process_2_title?.trim() ? profile.process_2_title : tradeConfig.defaultProcess[1]?.title || 'Paso 2',
-    process_2_text: profile?.process_2_text?.trim() ? profile.process_2_text : tradeConfig.defaultProcess[1]?.text || 'Descripción',
-    process_3_title: profile?.process_3_title?.trim() ? profile.process_3_title : tradeConfig.defaultProcess[2]?.title || 'Paso 3',
-    process_3_text: profile?.process_3_text?.trim() ? profile.process_3_text : tradeConfig.defaultProcess[2]?.text || 'Descripción',
-    process_4_title: profile?.process_4_title?.trim() ? profile.process_4_title : tradeConfig.defaultProcess[3]?.title || 'Paso 4',
-    process_4_text: profile?.process_4_text?.trim() ? profile.process_4_text : tradeConfig.defaultProcess[3]?.text || 'Descripción',
-    testimonial_1_name: profile?.testimonial_1_name?.trim() ? profile.testimonial_1_name : tradeConfig.defaultTestimonials[0]?.name || 'Cliente',
-    testimonial_1_role: profile?.testimonial_1_role?.trim() ? profile.testimonial_1_role : tradeConfig.defaultTestimonials[0]?.role || 'Rol',
-    testimonial_1_text: profile?.testimonial_1_text?.trim() ? profile.testimonial_1_text : tradeConfig.defaultTestimonials[0]?.text || 'Opinión',
-    testimonial_2_name: profile?.testimonial_2_name?.trim() ? profile.testimonial_2_name : tradeConfig.defaultTestimonials[1]?.name || '',
-    testimonial_2_role: profile?.testimonial_2_role?.trim() ? profile.testimonial_2_role : tradeConfig.defaultTestimonials[1]?.role || '',
-    testimonial_2_text: profile?.testimonial_2_text?.trim() ? profile.testimonial_2_text : tradeConfig.defaultTestimonials[1]?.text || '',
-    testimonial_3_name: profile?.testimonial_3_name?.trim() ? profile.testimonial_3_name : tradeConfig.defaultTestimonials[2]?.name || '',
-    testimonial_3_role: profile?.testimonial_3_role?.trim() ? profile.testimonial_3_role : tradeConfig.defaultTestimonials[2]?.role || '',
-    testimonial_3_text: profile?.testimonial_3_text?.trim() ? profile.testimonial_3_text : tradeConfig.defaultTestimonials[2]?.text || '',
-    faq_1_q: profile?.faq_1_q?.trim() ? profile.faq_1_q : tradeConfig.defaultFaqs[0]?.q || '',
-    faq_1_a: profile?.faq_1_a?.trim() ? profile.faq_1_a : tradeConfig.defaultFaqs[0]?.a || '',
-    faq_2_q: profile?.faq_2_q?.trim() ? profile.faq_2_q : tradeConfig.defaultFaqs[1]?.q || '',
-    faq_2_a: profile?.faq_2_a?.trim() ? profile.faq_2_a : tradeConfig.defaultFaqs[1]?.a || '',
-    faq_3_q: profile?.faq_3_q?.trim() ? profile.faq_3_q : tradeConfig.defaultFaqs[2]?.q || '',
-    faq_3_a: profile?.faq_3_a?.trim() ? profile.faq_3_a : tradeConfig.defaultFaqs[2]?.a || '',
-    faq_4_q: profile?.faq_4_q?.trim() ? profile.faq_4_q : tradeConfig.defaultFaqs[3]?.q || '',
-    faq_4_a: profile?.faq_4_a?.trim() ? profile.faq_4_a : tradeConfig.defaultFaqs[3]?.a || '',
-    whatsapp_message: profile?.whatsapp_message?.trim() ? profile.whatsapp_message : '¡Hola! Me interesa conocer más sobre tus servicios',
-    experience_years: profile?.experience_years?.trim() ? profile.experience_years : '10',
-    city: profile?.city?.trim() ? profile.city : 'Madrid',
-    phone: profile?.phone?.trim() ? profile.phone : '+34 600 000 000',
-    email: profile?.email?.trim() ? profile.email : 'info@negocio.com',
-    hero_image_url: profile?.hero_image_url?.trim() ? profile.hero_image_url : tradeConfig.heroImage,
-    logo_url: profile?.logo_url?.trim() ? profile.logo_url : '',
-  }
-
-  const wa = `https://wa.me/${safe.phone.replace(/\D/g, '')}?text=${encodeURIComponent(safe.whatsapp_message)}`
-
-  const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', sans-serif; color: ${colors.primary}; background: #faf7f2; overflow-x: hidden; }
-    img { display: block; max-width: 100%; }
-    a { text-decoration: none; color: inherit; }
-    button { font-family: inherit; cursor: pointer; border: none; background: none; }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
-    @keyframes slideLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: none; } }
-    @keyframes slideRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
-    @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(10px); } }
-    .a { opacity: 0; transform: translateY(28px); transition: opacity .75s ease, transform .75s ease; }
-    .a.vis { opacity: 1; transform: none; }
-    .al { opacity: 0; transform: translateX(-36px); transition: opacity .75s ease, transform .75s ease; }
-    .al.vis { opacity: 1; transform: none; }
-    .ar { opacity: 0; transform: translateX(36px); transition: opacity .75s ease, transform .75s ease; }
-    .ar.vis { opacity: 1; transform: none; }
-    .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; padding: 1.25rem 3.5rem; display: flex; justify-content: space-between; align-items: center; transition: all .35s ease; }
-    .nav.sc { background: rgba(${parseInt(colors.primary.slice(1,3),16)}, ${parseInt(colors.primary.slice(3,5),16)}, ${parseInt(colors.primary.slice(5,7),16)}, 0.95); backdrop-filter: blur(20px); box-shadow: 0 2px 24px rgba(0,0,0,.15); }
-    .nav-brand { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; color: ${scrolled ? 'white' : colors.primary}; display: flex; align-items: center; gap: .5rem; }
-    .nav-logo { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; }
-    .nav-links { display: flex; gap: 2.5rem; align-items: center; }
-    .nav-links a { font-size: .82rem; font-weight: 500; color: ${scrolled ? 'rgba(255,255,255,.8)' : '#666'}; transition: color .2s; }
-    .nav-links a:hover { color: ${scrolled ? 'white' : colors.primary}; }
-    .nav-btn { padding: .55rem 1.35rem; background: ${colors.accent}; color: ${colors.primary}; border-radius: 3px; font-size: .72rem; font-weight: 700; transition: all .2s; }
-    .nav-btn:hover { background: white; }
-    .hero { min-height: 100vh; position: relative; background: linear-gradient(135deg, rgba(10,15,20,.75) 0%, rgba(10,15,20,.4) 100%), url('${safe.hero_image_url}') center/cover no-repeat; display: flex; align-items: center; overflow: hidden; }
-    .hero-inner { position: relative; z-index: 2; padding: 0 3.5rem; max-width: 900px; text-align: center; margin: 5rem auto 0; }
-    .hero-eyebrow { display: inline-flex; align-items: center; gap: .75rem; font-size: .7rem; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: ${colors.accent}; margin-bottom: 2rem; animation: slideUp 0.8s ease 0.2s both; }
-    .hero-eyebrow::before { content: ''; width: 30px; height: 1.5px; background: ${colors.accent}; }
-    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(3.2rem, 8vw, 6.5rem); font-weight: 400; line-height: 1; color: white; margin-bottom: .4rem; animation: slideUp 0.8s ease 0.3s both; }
-    .hero h1 em { font-style: italic; color: ${colors.accent}; display: block; }
-    .hero-sub { font-size: clamp(.9rem, 2vw, 1.2rem); line-height: 1.75; color: rgba(255,255,255,.85); max-width: 600px; margin: 2rem auto 3rem; animation: slideUp 0.8s ease 0.4s both; }
-    .hero-ctas { display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: center; animation: slideUp 0.8s ease 0.5s both; }
-    .btn-primary { padding: 1rem 2.5rem; background: ${colors.accent}; color: ${colors.primary}; font-size: .75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-radius: 6px; transition: all .3s; display: inline-block; }
-    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(0,0,0,.3); }
-    .btn-secondary { padding: 1rem 2.5rem; background: transparent; color: white; border: 2px solid rgba(255,255,255,.6); font-size: .75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-radius: 6px; transition: all .3s; display: inline-block; }
-    .btn-secondary:hover { background: white; color: ${colors.primary}; border-color: white; transform: translateY(-3px); }
-    .hero-scroll { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: .5rem; animation: bounce 2.5s ease infinite; }
-    .hero-scroll span { font-size: .6rem; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,.45); }
-    .stats { background: ${colors.primary}; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding: 4rem 3.5rem; }
-    .stat { padding: 2rem; text-align: center; border-right: 1px solid rgba(255,255,255,.1); animation: slideUp 0.8s ease forwards; }
-    .stat:last-child { border-right: none; }
-    .stat-n { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 5vw, 3.5rem); color: ${colors.accent}; display: block; line-height: 1; margin-bottom: .5rem; }
-    .stat-l { font-size: .85rem; color: rgba(255,255,255,.8); }
-    .section { padding: 8rem 3.5rem; background: #faf7f2; }
-    .section-dark { background: ${colors.primary}; color: white; }
-    .section-grid { max-width: 1280px; margin: 0 auto; }
-    .section-head { text-align: center; max-width: 700px; margin: 0 auto 4rem; }
-    .tag { font-size: .65rem; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: ${colors.primary}; display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: 1.5rem; }
-    .section-dark .tag { color: ${colors.accent}; }
-    .tag::before { content: ''; width: 32px; height: 1.5px; background: currentColor; }
-    .tag::after { content: ''; width: 32px; height: 1.5px; background: currentColor; }
-    .h2 { font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 400; line-height: 1.1; margin-bottom: 1.5rem; }
-    .h2 em { font-style: italic; color: ${colors.accent}; }
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 3rem; }
-    .card { padding: 2.5rem; background: white; border-radius: 12px; border: 1px solid #ddd; transition: all .35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-    .card:hover { transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0,0,0,.12); }
-    .card h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: ${colors.primary}; margin-bottom: 1rem; margin-top: 1rem; }
-    .card p { font-size: .9rem; line-height: 1.7; color: #666; }
-    .card-icon { font-size: 3rem; display: block; margin-bottom: 1rem; }
-    .process-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-top: 3rem; }
-    .process-step { position: relative; text-align: center; }
-    .process-step::after { content: ''; position: absolute; top: 40px; left: calc(100% + 1rem); width: calc(100% - 2rem); height: 2px; background: rgba(255,255,255,.2); }
-    .process-step:last-child::after { display: none; }
-    .process-num { width: 80px; height: 80px; border-radius: 50%; background: ${colors.accent}; color: ${colors.primary}; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 1.5rem; font-family: 'Syne', sans-serif; }
-    .process-title { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; }
-    .process-text { font-size: .85rem; line-height: 1.6; opacity: .9; }
-    .benefits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
-    .benefit-card { padding: 2.5rem; background: #fff; border-radius: 12px; border: 1px solid #ddd; transition: all .3s; }
-    .benefit-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.1); }
-    .benefit-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
-    .benefit-title { font-size: 1.15rem; font-weight: 700; color: ${colors.primary}; margin-bottom: .75rem; }
-    .benefit-text { font-size: .9rem; line-height: 1.7; color: #666; }
-    .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
-    .tcard { padding: 2.5rem; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; transition: all .25s; }
-    .tcard:hover { background: rgba(255,255,255,.12); transform: translateY(-4px); }
-    .tcard-stars { font-size: 1.1rem; color: ${colors.accent}; letter-spacing: 3px; margin-bottom: 1.25rem; }
-    .tcard-text { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.05rem; line-height: 1.7; color: rgba(255,255,255,.95); margin-bottom: 1.5rem; }
-    .tcard-auth { display: flex; gap: 1rem; align-items: center; }
-    .tcard-av { width: 45px; height: 45px; border-radius: 50%; background: ${colors.accent}; color: ${colors.primary}; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: .9rem; }
-    .tcard-name { font-weight: 700; color: white; font-size: .9rem; }
-    .tcard-role { font-size: .75rem; color: ${colors.accent}; margin-top: .1rem; }
-    .faq-item { background: white; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 1.5rem; overflow: hidden; transition: all .3s; }
-    .faq-item:hover { box-shadow: 0 8px 24px rgba(0,0,0,.1); }
-    .faq-q { padding: 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #faf7f2; }
-    .faq-question { font-weight: 700; color: ${colors.primary}; font-size: 1rem; }
-    .faq-toggle { color: ${colors.accent}; font-size: 1.5rem; transition: transform .3s; }
-    .faq-item.open .faq-toggle { transform: rotate(180deg); }
-    .faq-a { padding: 1.5rem; color: #666; line-height: 1.8; font-size: .95rem; border-top: 1px solid #ddd; max-height: 0; overflow: hidden; transition: max-height .3s ease; }
-    .faq-item.open .faq-a { max-height: 500px; }
-    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; margin-top: 3rem; }
-    .cinfo { display: flex; flex-direction: column; gap: 2rem; }
-    .ci { display: flex; gap: 1.25rem; align-items: flex-start; }
-    .ci-ico { width: 48px; height: 48px; border-radius: 8px; background: ${colors.primary}; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
-    .ci-lbl { font-size: .65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${colors.primary}; margin-bottom: .3rem; }
-    .ci-val { font-size: .95rem; color: #1a2818; font-weight: 500; }
-    .wa-btn { display: inline-flex; align-items: center; gap: .75rem; padding: 1.1rem 2rem; background: #25D366; color: white; border-radius: 8px; font-size: .78rem; font-weight: 700; text-transform: uppercase; transition: all .3s; margin-top: 1.5rem; }
-    .wa-btn:hover { background: #1db954; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(37,211,102,.4); }
-    .fcard { background: white; border-radius: 12px; padding: 3rem; box-shadow: 0 10px 50px rgba(0,0,0,.08); border: 1px solid #ddd; }
-    .fcard h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #1a2818; margin-bottom: .5rem; }
-    .fcard-sub { font-size: .85rem; color: #888; margin-bottom: 2rem; }
-    .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-    .fgrid.full { grid-column: 1/-1; }
-    .ffield { display: flex; flex-direction: column; gap: .4rem; }
-    .ffield label { font-size: .65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${colors.primary}; }
-    .ffield input, .ffield select, .ffield textarea { padding: .9rem 1rem; background: #f8f7f4; border: 1.5px solid transparent; border-radius: 8px; font-size: .9rem; color: #1a2818; transition: all .2s; outline: none; }
-    .ffield input:focus, .ffield select:focus, .ffield textarea:focus { border-color: ${colors.primary}; background: white; box-shadow: 0 0 0 4px rgba(${parseInt(colors.primary.slice(1,3),16)}, ${parseInt(colors.primary.slice(3,5),16)}, ${parseInt(colors.primary.slice(5,7),16)}, 0.1); }
-    .fsubmit { width: 100%; padding: 1.1rem; margin-top: 1rem; background: ${colors.primary}; color: white; font-size: .78rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-radius: 8px; cursor: pointer; transition: all .3s; }
-    .fsubmit:hover { background: ${colors.secondary}; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,.2); }
-    .sent { text-align: center; padding: 4rem 1rem; }
-    .sent-ico { font-size: 4rem; margin-bottom: 1.5rem; display: block; animation: bounce 0.6s cubic-bezier(.34,1.56,.64,1); }
-    .sent h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #1a2818; margin-bottom: .75rem; }
-    .sent p { font-size: .95rem; color: #888; }
-    .footer { background: #1a2818; padding: 4rem 3.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem; color: white; }
-    .footer-brand { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; margin-bottom: .5rem; }
-    .footer-copy { font-size: .75rem; opacity: .6; }
-    .footer-powered { font-size: .75rem; opacity: .5; }
-    .waf { position: fixed; bottom: 2rem; right: 2rem; z-index: 100; width: 70px; height: 70px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 8px 30px rgba(37,211,102,.4); transition: all .3s; animation: slideUp 0.8s ease 3s both; }
-    .waf:hover { transform: scale(1.15); box-shadow: 0 12px 40px rgba(37,211,102,.6); }
-    @media(max-width: 1024px) {
-      .contact-grid { grid-template-columns: 1fr; gap: 3rem; }
-      .cards-grid, .testimonials-grid { grid-template-columns: 1fr 1fr; }
-      .process-grid { grid-template-columns: 1fr 1fr; }
-      .process-step::after { display: none; }
-      .benefits-grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media(max-width: 768px) {
-      .nav, .nav.sc { padding: .9rem 1.5rem; }
-      .nav-links { display: none; }
-      .section { padding: 4rem 1.5rem; }
-      .hero-inner { padding: 0 1.5rem; }
-      .cards-grid, .testimonials-grid, .benefits-grid, .fgrid { grid-template-columns: 1fr; }
-      .process-grid { grid-template-columns: 1fr 1fr; }
-      .footer { flex-direction: column; text-align: center; }
-      .fgrid.full { grid-column: 1; }
-      .stats { grid-template-columns: 1fr 1fr; }
-    }
-  `
+  const wa = `https://wa.me/${BIZ.phone.replace(/\D/g, '')}?text=${encodeURIComponent(BIZ.waText)}`
 
   return (
     <>
-      <style>{styles}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap');
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; font-size:16px; }
+        body { font-family:'Inter',sans-serif; overflow-x:hidden; background:#faf7f2; color:#1a2818; }
+        img { display:block; max-width:100%; }
+        a { text-decoration:none; color:inherit; }
+        button { font-family:inherit; cursor:pointer; border:none; background:none; }
+
+        /* ANIMATIONS */
+        .a { opacity:0; transform:translateY(28px); transition:opacity .75s ease, transform .75s ease; }
+        .a.vis { opacity:1; transform:none; }
+        .al { opacity:0; transform:translateX(-36px); transition:opacity .75s ease, transform .75s ease; }
+        .al.vis { opacity:1; transform:none; }
+        .ar { opacity:0; transform:translateX(36px); transition:opacity .75s ease, transform .75s ease; }
+        .ar.vis { opacity:1; transform:none; }
+        .d1{transition-delay:.1s} .d2{transition-delay:.2s} .d3{transition-delay:.3s}
+        .d4{transition-delay:.35s} .d5{transition-delay:.45s} .d6{transition-delay:.55s}
+
+        /* NAV */
+        .nav {
+          position:fixed; top:0; left:0; right:0; z-index:200;
+          padding:1.25rem 3.5rem;
+          display:flex; justify-content:space-between; align-items:center;
+          transition:all .35s ease;
+        }
+        .nav.sc {
+          background:rgba(45,90,39,.95);
+          backdrop-filter:blur(20px);
+          padding:.85rem 3.5rem;
+          box-shadow:0 2px 24px rgba(0,0,0,.18);
+        }
+        .nav-brand {
+          font-family:'Syne',sans-serif; font-size:1.25rem; font-weight:800;
+          color:#fff; letter-spacing:-.3px; display:flex; align-items:center; gap:.5rem;
+        }
+        .nav-dot { width:8px; height:8px; background:${colors.accent}; border-radius:50%; }
+        .nav-links { display:flex; gap:2.5rem; align-items:center; }
+        .nav-links a {
+          font-size:.82rem; font-weight:500; color:rgba(255,255,255,.8);
+          letter-spacing:.3px; transition:color .2s;
+        }
+        .nav-links a:hover { color:#fff; }
+        .nav-btn {
+          padding:.55rem 1.35rem;
+          background:${colors.accent}; color:#1a2818;
+          border-radius:3px; font-size:.72rem; font-weight:700;
+          letter-spacing:1.5px; text-transform:uppercase;
+          transition:all .2s;
+        }
+        .nav-btn:hover { background:#fff; transform:translateY(-1px); }
+        .burger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; }
+        .burger span { width:22px; height:2px; background:#fff; border-radius:2px; display:block; }
+
+        /* MOBILE MENU */
+        .mmenu {
+          position:fixed; inset:0; z-index:300;
+          background:${colors.primary};
+          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2.5rem;
+          transform:translateX(101%); transition:transform .35s ease;
+        }
+        .mmenu.open { transform:translateX(0); }
+        .mmenu a { font-family:'Playfair Display',serif; font-size:2rem; font-style:italic; color:#fff; }
+        .mmenu-x {
+          position:absolute; top:1.5rem; right:1.5rem;
+          width:40px; height:40px; border-radius:50%;
+          background:rgba(255,255,255,.12); color:#fff;
+          display:grid; place-items:center; font-size:1.2rem;
+        }
+
+        /* HERO */
+        .hero {
+          min-height:100vh; position:relative;
+          background:url('${BIZ.gallery[0]}') center/cover no-repeat;
+          display:flex; align-items:center;
+          overflow:hidden;
+        }
+        .hero::before {
+          content:''; position:absolute; inset:0;
+          background:linear-gradient(110deg, rgba(15,35,12,.82) 0%, rgba(15,35,12,.5) 55%, rgba(15,35,12,.2) 100%);
+        }
+        .hero-inner {
+          position:relative; z-index:2;
+          padding:0 3.5rem; max-width:860px; margin-top:5rem;
+        }
+        .hero-eyebrow {
+          display:inline-flex; align-items:center; gap:.65rem;
+          font-size:.68rem; font-weight:700; letter-spacing:4px; text-transform:uppercase;
+          color:${colors.accent}; margin-bottom:1.75rem;
+          animation:fu .8s ease .3s both;
+        }
+        .hero-eyebrow-bar { width:30px; height:1px; background:${colors.accent}; }
+        .hero h1 {
+          font-family:'Playfair Display',serif;
+          font-size:clamp(3.2rem,7.5vw,6.5rem);
+          font-weight:400; line-height:.95; letter-spacing:-2px;
+          color:#fff; margin-bottom:.4rem;
+          animation:fu .9s ease .5s both;
+        }
+        .hero h1 em { font-style:italic; color:${colors.accent}; display:block; }
+        .hero-sub {
+          font-size:clamp(.9rem,1.8vw,1.1rem); line-height:1.75;
+          color:rgba(255,255,255,.82); max-width:520px;
+          margin:1.5rem 0 2.75rem;
+          animation:fu .9s ease .7s both;
+        }
+        .hero-ctas { display:flex; gap:1rem; flex-wrap:wrap; animation:fu .9s ease .9s both; }
+        .btn-g {
+          padding:.92rem 2.2rem;
+          background:${colors.accent}; color:#1a2818;
+          font-size:.75rem; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+          border-radius:3px; transition:all .25s; display:inline-block;
+        }
+        .btn-g:hover { background:#fff; transform:translateY(-3px); box-shadow:0 12px 32px rgba(0,0,0,.3); }
+        .btn-o {
+          padding:.92rem 2.2rem;
+          background:transparent; color:#fff;
+          border:1.5px solid rgba(255,255,255,.55);
+          font-size:.75rem; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+          border-radius:3px; transition:all .25s; display:inline-block;
+        }
+        .btn-o:hover { background:#fff; color:${colors.primary}; transform:translateY(-3px); }
+        .hero-scroll {
+          position:absolute; bottom:2rem; left:50%; transform:translateX(-50%);
+          z-index:2; display:flex; flex-direction:column; align-items:center; gap:.5rem;
+          animation:bounce 2.5s ease infinite;
+        }
+        .hero-scroll span { font-size:.6rem; letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,.45); }
+        .hero-scroll-line { width:1px; height:42px; background:linear-gradient(to bottom, rgba(255,255,255,.5), transparent); }
+        @keyframes fu { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:none} }
+        @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(10px)} }
+
+        /* STATS */
+        .stats {
+          background:${colors.primary};
+          display:grid; grid-template-columns:repeat(4,1fr);
+        }
+        .stat {
+          padding:2.75rem 1.5rem; text-align:center;
+          border-right:1px solid rgba(255,255,255,.1);
+          transition:background .2s;
+        }
+        .stat:last-child { border-right:none; }
+        .stat:hover { background:rgba(255,255,255,.06); }
+        .stat-n {
+          font-family:'Playfair Display',serif; font-size:2.8rem;
+          color:${colors.accent}; display:block; line-height:1; margin-bottom:.4rem;
+        }
+        .stat-l { font-size:.78rem; color:rgba(255,255,255,.65); }
+
+        /* ABOUT */
+        .about { background:#faf7f2; padding:8rem 3.5rem; }
+        .about-grid { max-width:1180px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:6rem; align-items:center; }
+        .stag {
+          font-size:.65rem; font-weight:700; letter-spacing:4px; text-transform:uppercase;
+          color:${colors.primary}; display:flex; align-items:center; gap:.65rem; margin-bottom:1.2rem;
+        }
+        .stag::before { content:''; width:28px; height:1px; background:${colors.primary}; }
+        .h2 {
+          font-family:'Playfair Display',serif;
+          font-size:clamp(2rem,4vw,3.2rem); font-weight:400;
+          line-height:1.1; letter-spacing:-.5px; color:#1a2818; margin-bottom:1.25rem;
+        }
+        .h2 em { font-style:italic; color:${colors.primary}; }
+        .body { font-size:.95rem; line-height:1.8; color:#4a5548; margin-bottom:1.25rem; }
+        .chips { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1.5rem; }
+        .chip {
+          display:flex; align-items:center; gap:.5rem;
+          padding:.55rem .95rem;
+          background:#fff; border:1px solid #ddd8cc; border-radius:4px;
+          font-size:.82rem; font-weight:500; color:${colors.primary};
+          transition:all .2s;
+        }
+        .chip:hover { border-color:${colors.primary}; transform:translateY(-2px); }
+        .about-img-wrap { position:relative; padding:0 1.5rem 1.5rem 0; }
+        .about-img {
+          width:100%; aspect-ratio:3/4; object-fit:cover;
+          border-radius:6px; display:block;
+          box-shadow:0 20px 60px rgba(0,0,0,.15);
+        }
+        .about-badge {
+          position:absolute; bottom:-1.5rem; left:-1rem;
+          background:${colors.primary}; border-radius:6px; padding:1.2rem 1.5rem;
+          text-align:center; box-shadow:0 12px 32px rgba(45,90,39,.4);
+        }
+        .about-badge-n { font-family:'Playfair Display',serif; font-size:2.4rem; color:${colors.accent}; display:block; line-height:1; }
+        .about-badge-l { font-size:.7rem; color:rgba(255,255,255,.7); margin-top:.2rem; }
+
+        /* SERVICE CARDS */
+        .services { background:#fff; padding:8rem 3.5rem; }
+        .services-cont { max-width:1180px; margin:0 auto; }
+        .section-head { text-align:center; max-width:580px; margin:0 auto 3.5rem; }
+        .section-head .stag { justify-content:center; }
+        .section-head .stag::before { display:none; }
+        .cards-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; }
+        .scard {
+          background:#faf7f2; border-radius:10px; overflow:hidden;
+          border:1px solid #e8dfd0;
+          transition:transform .3s ease, box-shadow .3s ease;
+          display:flex; flex-direction:column;
+        }
+        .scard:hover { transform:translateY(-6px); box-shadow:0 16px 48px rgba(45,90,39,.15); }
+        .scard-img { width:100%; height:220px; object-fit:cover; transition:transform .5s ease; }
+        .scard:hover .scard-img { transform:scale(1.04); }
+        .scard-img-wrap { overflow:hidden; position:relative; }
+        .scard-img-wrap::after {
+          content:''; position:absolute; bottom:0; left:0; right:0; height:60px;
+          background:linear-gradient(to bottom, transparent, #faf7f2);
+        }
+        .scard-body { padding:1.5rem; flex:1; display:flex; flex-direction:column; }
+        .scard-icon { font-size:1.75rem; margin-bottom:.75rem; display:block; }
+        .scard-name {
+          font-family:'Playfair Display',serif; font-size:1.35rem;
+          color:#1a2818; margin-bottom:.65rem; font-weight:600;
+        }
+        .scard-desc { font-size:.875rem; line-height:1.7; color:#4a5548; flex:1; margin-bottom:1.25rem; }
+        .scard-btn {
+          display:inline-flex; align-items:center; gap:.5rem;
+          padding:.65rem 1.25rem;
+          background:${colors.primary}; color:#fff;
+          border-radius:4px; font-size:.78rem; font-weight:700;
+          letter-spacing:1px; text-transform:uppercase;
+          transition:all .2s; align-self:flex-start;
+        }
+        .scard-btn:hover { background:${colors.secondary}; transform:translateY(-2px); box-shadow:0 6px 20px rgba(45,90,39,.3); }
+
+        /* PROCESS */
+        .process { background:${colors.primary}; padding:8rem 3.5rem; color:#fff; }
+        .process-cont { max-width:1180px; margin:0 auto; }
+        .process-head { text-align:center; margin-bottom:4rem; }
+        .process-head .stag { color:${colors.accent}; justify-content:center; }
+        .process-head .stag::before { background:${colors.accent}; }
+        .process-head .h2 { color:#fff; }
+        .process-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:2rem; }
+        .process-step {
+          position:relative; text-align:center;
+        }
+        .process-step::after {
+          content:''; position:absolute; top:40px; left:calc(100% + 1rem); width:calc(100% - 2rem); height:2px;
+          background:rgba(255,255,255,.2);
+        }
+        .process-step:last-child::after { display:none; }
+        .process-num {
+          width:80px; height:80px; border-radius:50%;
+          background:${colors.accent}; color:${colors.primary};
+          display:flex; align-items:center; justify-content:center;
+          font-size:2rem; font-weight:800; margin:0 auto 1.5rem;
+          font-family:'Syne',sans-serif;
+        }
+        .process-title { font-size:1.1rem; font-weight:700; margin-bottom:.75rem; }
+        .process-text { font-size:.85rem; line-height:1.6; opacity:.9; }
+
+        /* BENEFITS */
+        .benefits { background:#faf7f2; padding:8rem 3.5rem; }
+        .benefits-cont { max-width:1180px; margin:0 auto; }
+        .benefits-head { text-align:center; margin-bottom:4rem; }
+        .benefits-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; }
+        .benefit-card {
+          padding:2.5rem; background:#fff; border-radius:8px; border:1px solid #e8dfd0;
+          transition:all .3s;
+        }
+        .benefit-card:hover { transform:translateY(-4px); box-shadow:0 12px 32px rgba(0,0,0,.1); }
+        .benefit-icon { font-size:2.5rem; margin-bottom:1rem; display:block; }
+        .benefit-title { font-size:1.15rem; font-weight:700; color:${colors.primary}; margin-bottom:.75rem; }
+        .benefit-text { font-size:.9rem; line-height:1.7; color:#666; }
+
+        /* BANNER 1 */
+        .banner1 {
+          background:${colors.primary};
+          padding:5rem 3.5rem;
+          display:flex; justify-content:space-between; align-items:center;
+          gap:3rem; flex-wrap:wrap;
+        }
+        .banner1 h2 {
+          font-family:'Playfair Display',serif;
+          font-size:clamp(1.8rem,3.5vw,2.6rem); font-style:italic;
+          color:#fff; margin-bottom:.5rem;
+        }
+        .banner1 p { font-size:.95rem; color:${colors.accent}; max-width:480px; }
+
+        /* GALLERY */
+        .gallery { background:#f2ede4; padding:8rem 3.5rem; }
+        .gallery-cont { max-width:1180px; margin:0 auto; }
+        .gallery-head { text-align:center; max-width:560px; margin:0 auto 3rem; }
+        .gallery-head .stag { justify-content:center; }
+        .gallery-head .stag::before { display:none; }
+        .g-grid {
+          display:grid;
+          grid-template-columns:2fr 1fr 1fr;
+          grid-template-rows:260px 260px;
+          gap:8px;
+        }
+        .g-item { overflow:hidden; border-radius:5px; cursor:pointer; position:relative; }
+        .g-item:first-child { grid-row:1/3; }
+        .g-item img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
+        .g-item:hover img { transform:scale(1.06); }
+        .g-overlay {
+          position:absolute; inset:0; background:rgba(30,60,25,.45);
+          display:grid; place-items:center; opacity:0; transition:opacity .3s;
+        }
+        .g-item:hover .g-overlay { opacity:1; }
+        .g-overlay span {
+          color:#fff; font-size:.72rem; font-weight:700;
+          letter-spacing:2px; text-transform:uppercase;
+          border:1px solid rgba(255,255,255,.6); padding:.4rem .9rem; border-radius:3px;
+        }
+
+        /* LIGHTBOX */
+        .lb {
+          position:fixed; inset:0; z-index:500;
+          background:rgba(0,0,0,.94);
+          display:flex; align-items:center; justify-content:center; padding:2rem;
+          animation:fin .2s ease;
+        }
+        @keyframes fin { from{opacity:0} to{opacity:1} }
+        .lb img { max-width:90vw; max-height:85vh; object-fit:contain; border-radius:4px; }
+        .lb-x {
+          position:fixed; top:1.5rem; right:1.5rem;
+          width:44px; height:44px; border-radius:50%;
+          background:rgba(255,255,255,.15); color:#fff;
+          display:grid; place-items:center; font-size:1.25rem; cursor:pointer;
+          transition:background .2s;
+        }
+        .lb-x:hover { background:rgba(255,255,255,.3); }
+
+        /* TESTIMONIALS */
+        .testi { background:${colors.primary}; padding:8rem 3.5rem; }
+        .testi-cont { max-width:1180px; margin:0 auto; }
+        .testi-head { text-align:center; margin-bottom:3.5rem; }
+        .testi-head .stag { justify-content:center; color:${colors.accent}; }
+        .testi-head .stag::before { background:${colors.accent}; }
+        .testi-head .h2 { color:#fff; }
+        .t-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; }
+        .tcard {
+          background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+          border-radius:10px; padding:2rem;
+          transition:all .25s;
+        }
+        .tcard:hover { background:rgba(255,255,255,.12); transform:translateY(-4px); }
+        .tcard-stars { color:${colors.accent}; font-size:1.05rem; letter-spacing:3px; margin-bottom:1.25rem; display:block; }
+        .tcard-text {
+          font-family:'Playfair Display',serif; font-style:italic;
+          font-size:1.08rem; line-height:1.65; color:rgba(255,255,255,.92);
+          margin-bottom:1.5rem;
+        }
+        .tcard-auth { display:flex; gap:.75rem; align-items:center; }
+        .tcard-av {
+          width:40px; height:40px; border-radius:50%;
+          background:${colors.accent}; color:#1a2818;
+          display:grid; place-items:center;
+          font-family:'Syne',sans-serif; font-weight:800; font-size:.85rem; flex-shrink:0;
+        }
+        .tcard-name { font-weight:700; font-size:.85rem; color:#fff; }
+        .tcard-role { font-size:.75rem; color:${colors.accent}; margin-top:.1rem; }
+
+        /* FAQ */
+        .faq { background:#faf7f2; padding:8rem 3.5rem; }
+        .faq-cont { max-width:900px; margin:0 auto; }
+        .faq-head { text-align:center; margin-bottom:4rem; }
+        .faq-item {
+          background:#fff; border:1px solid #e8dfd0; border-radius:8px;
+          margin-bottom:1.5rem; overflow:hidden;
+          transition:all .3s;
+        }
+        .faq-item:hover { box-shadow:0 8px 24px rgba(0,0,0,.1); }
+        .faq-q {
+          padding:1.5rem; cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+          background:#faf7f2; transition:background .2s;
+        }
+        .faq-item.open .faq-q { background:#fff; }
+        .faq-q:hover { background:#f5f0e8; }
+        .faq-question { font-weight:700; color:${colors.primary}; font-size:1rem; }
+        .faq-toggle { color:${colors.accent}; font-size:1.5rem; transition:transform .3s; }
+        .faq-item.open .faq-toggle { transform:rotate(180deg); }
+        .faq-a {
+          padding:1.5rem; color:#666; line-height:1.8; font-size:.95rem;
+          border-top:1px solid #e8dfd0;
+          max-height:0; overflow:hidden; transition:max-height .3s ease;
+        }
+        .faq-item.open .faq-a { max-height:500px; }
+
+        /* BANNER 2 */
+        .banner2 {
+          position:relative; overflow:hidden;
+          background:url('${BIZ.gallery[3] || BIZ.gallery[0]}') center/cover no-repeat;
+          padding:7rem 3.5rem; text-align:center;
+        }
+        .banner2::before {
+          content:''; position:absolute; inset:0;
+          background:rgba(15,35,12,.78);
+        }
+        .banner2-inner { position:relative; z-index:1; max-width:700px; margin:0 auto; }
+        .banner2 h2 {
+          font-family:'Playfair Display',serif;
+          font-size:clamp(2rem,4vw,3rem); font-style:italic;
+          color:#fff; margin-bottom:1rem;
+        }
+        .banner2 p { font-size:.95rem; color:${colors.accent}; margin-bottom:2rem; }
+
+        /* CONTACT */
+        .contact { background:#faf7f2; padding:8rem 3.5rem; }
+        .contact-cont { max-width:1180px; margin:0 auto; display:grid; grid-template-columns:1fr 1.15fr; gap:5rem; align-items:start; }
+        .contact-body { font-size:.95rem; line-height:1.8; color:#4a5548; margin-bottom:2rem; }
+        .cinfo { display:flex; flex-direction:column; gap:1rem; margin-bottom:2rem; }
+        .ci { display:flex; gap:.85rem; align-items:flex-start; }
+        .ci-ico {
+          width:40px; height:40px; border-radius:6px; background:${colors.primary};
+          color:#fff; display:grid; place-items:center; font-size:1rem; flex-shrink:0;
+        }
+        .ci-lbl { font-size:.65rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:${colors.primary}; margin-bottom:.15rem; }
+        .ci-val { font-size:.9rem; color:#1a2818; font-weight:500; }
+        .wa-btn {
+          display:inline-flex; align-items:center; gap:.65rem;
+          padding:1rem 1.75rem; background:#25D366; color:#fff;
+          border-radius:4px; font-size:.78rem; font-weight:700;
+          letter-spacing:1.5px; text-transform:uppercase; transition:all .25s;
+        }
+        .wa-btn:hover { background:#1db954; transform:translateY(-2px); box-shadow:0 8px 24px rgba(37,211,102,.4); }
+
+        /* FORM CARD */
+        .fcard {
+          background:#fff; border-radius:12px; padding:2.5rem;
+          box-shadow:0 8px 40px rgba(0,0,0,.08);
+          border:1px solid #e8dfd0;
+        }
+        .fcard h3 {
+          font-family:'Playfair Display',serif; font-size:1.4rem;
+          color:#1a2818; margin-bottom:.3rem;
+        }
+        .fcard-sub { font-size:.82rem; color:#6b7b68; margin-bottom:1.75rem; }
+        .fg { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+        .fg .full { grid-column:1/-1; }
+        .ff { display:flex; flex-direction:column; gap:.35rem; }
+        .ff label {
+          font-size:.64rem; font-weight:700; letter-spacing:1.5px;
+          text-transform:uppercase; color:${colors.primary};
+        }
+        .ff input, .ff select, .ff textarea {
+          padding:.72rem .9rem;
+          background:#f0f5ee; border:1.5px solid transparent;
+          border-radius:6px; font-family:'Inter',sans-serif; font-size:.9rem;
+          color:#1a2818; transition:all .2s; outline:none;
+        }
+        .ff textarea { resize:vertical; min-height:100px; }
+        .ff input:focus, .ff select:focus, .ff textarea:focus {
+          border-color:${colors.primary}; background:#fff;
+          box-shadow:0 0 0 4px rgba(45,90,39,.08);
+        }
+        .ff input::placeholder, .ff textarea::placeholder { color:#a8b8a5; }
+        .f-submit {
+          width:100%; padding:1rem; margin-top:.75rem;
+          background:${colors.primary}; color:#fff;
+          font-family:'Inter',sans-serif; font-size:.78rem; font-weight:700;
+          letter-spacing:2px; text-transform:uppercase;
+          border-radius:6px; border:none; cursor:pointer;
+          transition:all .25s;
+        }
+        .f-submit:hover { background:${colors.secondary}; transform:translateY(-2px); box-shadow:0 8px 24px rgba(45,90,39,.3); }
+        .sent { text-align:center; padding:3rem 1rem; }
+        .sent-ico { font-size:3.5rem; margin-bottom:1rem; display:block; animation:pop .5s cubic-bezier(.34,1.56,.64,1); }
+        @keyframes pop { from{transform:scale(0)} to{transform:scale(1)} }
+        .sent h3 { font-family:'Playfair Display',serif; font-size:1.35rem; color:#1a2818; margin-bottom:.5rem; }
+        .sent p { font-size:.9rem; color:#6b7b68; }
+
+        /* FOOTER */
+        .footer {
+          background:#1a2818; padding:3rem 3.5rem;
+          display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;
+        }
+        .footer-brand {
+          font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:800;
+          color:#fff; margin-bottom:.3rem;
+        }
+        .footer-brand span { color:${colors.accent}; }
+        .footer-copy { font-size:.75rem; color:rgba(255,255,255,.4); }
+        .footer-powered { font-size:.75rem; color:rgba(255,255,255,.35); }
+        .footer-powered span { color:${colors.accent}; }
+
+        /* WA FLOAT */
+        .waf {
+          position:fixed; bottom:2rem; right:2rem; z-index:100;
+          width:60px; height:60px; border-radius:50%;
+          background:#25D366; display:flex; align-items:center; justify-content:center;
+          font-size:1.7rem; box-shadow:0 6px 28px rgba(37,211,102,.5);
+          transition:all .25s;
+          animation:wap .7s cubic-bezier(.34,1.56,.64,1) 2s both;
+        }
+        .waf:hover { transform:scale(1.12); box-shadow:0 12px 40px rgba(37,211,102,.6); }
+        @keyframes wap { from{opacity:0;transform:scale(0)} to{opacity:1;transform:scale(1)} }
+        .waf-tip {
+          position:absolute; right:72px; top:50%; transform:translateY(-50%);
+          background:#fff; color:#1a2818; padding:.4rem .85rem; border-radius:6px;
+          font-size:.78rem; font-weight:600; white-space:nowrap;
+          box-shadow:0 4px 16px rgba(0,0,0,.12);
+          opacity:0; transition:opacity .2s; pointer-events:none;
+        }
+        .waf:hover .waf-tip { opacity:1; }
+
+        /* MARQUEE */
+        .mq { background:${colors.primary}; padding:1.75rem 0; overflow:hidden; white-space:nowrap; }
+        .mq-inner { display:inline-block; animation:sc 30s linear infinite; }
+        .mq-inner:hover { animation-play-state:paused; }
+        .mq-text {
+          font-family:'Playfair Display',serif;
+          font-size:1.65rem; color:#fff;
+          display:inline-flex; align-items:center; gap:1.5rem;
+        }
+        .mq-text em { font-style:italic; color:${colors.accent}; }
+        .mq-sep { opacity:.25; }
+        @keyframes sc { to { transform:translateX(-50%); } }
+
+        /* RESPONSIVE */
+        @media(max-width:1024px) {
+          .about-grid,.contact-cont { grid-template-columns:1fr; gap:3rem; }
+          .t-grid { grid-template-columns:1fr 1fr; }
+          .cards-grid { grid-template-columns:1fr 1fr; }
+          .benefits-grid { grid-template-columns:1fr 1fr; }
+          .process-grid { grid-template-columns:1fr 1fr; }
+          .g-grid { grid-template-columns:1fr 1fr; grid-template-rows:auto; }
+          .g-item:first-child { grid-row:auto; }
+          .process-step::after { display:none; }
+        }
+        @media(max-width:768px) {
+          .nav,.nav.sc { padding:.9rem 1.25rem; }
+          .nav-links { display:none; }
+          .burger { display:flex; }
+          .hero-inner { padding:0 1.25rem; }
+          .about,.services,.testi,.contact,.gallery,.process,.benefits,.faq { padding:5rem 1.25rem; }
+          .banner1,.banner2 { padding:4.5rem 1.25rem; }
+          .cards-grid { grid-template-columns:1fr; }
+          .benefits-grid { grid-template-columns:1fr; }
+          .process-grid { grid-template-columns:1fr; }
+          .t-grid { grid-template-columns:1fr; }
+          .g-grid { grid-template-columns:1fr 1fr; }
+          .fg { grid-template-columns:1fr; }
+          .hero-ctas { flex-direction:column; }
+          .banner1 { flex-direction:column; text-align:center; }
+          .footer { flex-direction:column; text-align:center; padding:2.5rem 1.25rem; }
+        }
+        @media(max-width:480px) {
+          .g-grid { grid-template-columns:1fr; }
+          .stats { grid-template-columns:1fr 1fr; }
+        }
+      `}</style>
+
+      {/* NAV */}
       <nav className={`nav ${scrolled ? 'sc' : ''}`}>
-        <div className="nav-brand">
-          {safe.logo_url && <img src={safe.logo_url} alt="Logo" className="nav-logo" />}
-          {safe.business_name.split(' ')[0]}
-        </div>
+        <div className="nav-brand">{BIZ.name.split(' ')[0]}<span className="nav-dot" /></div>
         <div className="nav-links">
           <a href="#servicios">Servicios</a>
           <a href="#proceso">Proceso</a>
-          <a href="#testimonios">Testimonios</a>
-          <a href="#contacto" className="nav-btn">Contacto</a>
+          <a href="#galeria">Galería</a>
+          <a href="#testimonios">Clientes</a>
+          <a href="#contacto" className="nav-btn">Presupuesto gratis</a>
+        </div>
+        <div className="burger" onClick={() => setMenuOpen(true)}>
+          <span/><span/><span/>
         </div>
       </nav>
+
+      {/* MOBILE MENU */}
+      <div className={`mmenu ${menuOpen ? 'open' : ''}`}>
+        <button className="mmenu-x" onClick={() => setMenuOpen(false)}>×</button>
+        {['#servicios:Servicios','#proceso:Proceso','#galeria:Galería','#testimonios:Clientes','#contacto:Contacto'].map(x => {
+          const [href, label] = x.split(':')
+          return <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
+        })}
+      </div>
+
+      {/* HERO */}
       <header className="hero">
         <div className="hero-inner">
-          <div className="hero-eyebrow">{safe.city}</div>
-          <h1>{safe.headline}<em>{safe.subtitle}</em></h1>
-          <p className="hero-sub">{safe.intro_text}</p>
+          <div className="hero-eyebrow">
+            <span className="hero-eyebrow-bar" />
+            {BIZ.trade} · {BIZ.city}
+          </div>
+          <h1>
+            {BIZ.headline}
+            <em>{BIZ.headline2}</em>
+          </h1>
+          <p className="hero-sub">{BIZ.sub}</p>
           <div className="hero-ctas">
-            <a href="#contacto" className="btn-primary">Solicitar presupuesto</a>
-            <a href="#servicios" className="btn-secondary">Ver servicios</a>
+            <a href="#contacto" className="btn-g">Solicitar presupuesto gratis</a>
+            <a href="#servicios" className="btn-o">Ver servicios</a>
           </div>
         </div>
         <div className="hero-scroll">
-          <div style={{ width: '1px', height: '42px', background: 'linear-gradient(to bottom, rgba(255,255,255,.5), transparent)' }} />
+          <div className="hero-scroll-line" />
           <span>Scroll</span>
         </div>
       </header>
+
+      {/* STATS */}
       <div className="stats">
         {[
-          { n: `+${safe.experience_years}`, l: 'años de experiencia' },
+          { n: `+${BIZ.years}`, l: 'años de experiencia' },
           { n: '+1000', l: 'clientes satisfechos' },
           { n: '99%', l: 'tasa de recomendación' },
           { n: '24h', l: 'respuesta garantizada' },
         ].map((s, i) => (
-          <div key={i} className="stat a">
+          <div key={i} className={`stat a d${i + 1}`}>
             <span className="stat-n">{s.n}</span>
             <div className="stat-l">{s.l}</div>
           </div>
         ))}
       </div>
-      <section className="section">
-        <div className="section-grid">
-          <div className="section-head">
-            <div className="tag">Quiénes somos</div>
-            <h2 className="h2">Pasión por la <em>excelencia</em></h2>
-            <p>{safe.intro_text}</p>
+
+      {/* ABOUT */}
+      <section className="about" id="nosotros">
+        <div className="about-grid">
+          <div className="al">
+            <div className="stag">Quiénes somos</div>
+            <h2 className="h2">Pasión por los <em>espacios</em>.</h2>
+            <p className="body">{BIZ.about}</p>
+            <div className="chips">
+              {[
+                `${BIZ.benefit_1 || '👥 Equipo propio'}`,
+                `${BIZ.benefit_2 || '📋 Presupuesto cerrado'}`,
+                `${BIZ.benefit_3 || '🌱 Garantía incluida'}`,
+              ].map(c => (
+                <span key={c} className="chip">{c}</span>
+              ))}
+            </div>
+          </div>
+          <div className="ar" style={{position:'relative',paddingRight:'1.5rem',paddingBottom:'1.5rem'}}>
+            <img src={BIZ.gallery[1]} alt={BIZ.name} className="about-img" loading="lazy" />
+            <div className="about-badge">
+              <span className="about-badge-n">+200</span>
+              <div className="about-badge-l">proyectos</div>
+            </div>
           </div>
         </div>
       </section>
-      <section className="section section-dark">
-        <div className="section-grid">
-          <div className="section-head">
-            <div className="tag">Lo que hacemos</div>
-            <h2 className="h2">Nuestros <em>servicios</em></h2>
+
+      {/* SERVICES CARDS */}
+      <section className="services" id="servicios">
+        <div className="services-cont">
+          <div className="section-head a">
+            <div className="stag">Lo que hacemos</div>
+            <h2 className="h2">Nuestros <em>servicios</em>.</h2>
           </div>
           <div className="cards-grid">
-            {[
-              { title: safe.service_1_title, desc: safe.service_1_desc, icon: '🎯' },
-              { title: safe.service_2_title, desc: safe.service_2_desc, icon: '⚡' },
-              { title: safe.service_3_title, desc: safe.service_3_desc, icon: '✨' },
-            ].map((s, i) => (
-              <div key={i} className={`card a`} id={i === 0 ? 'servicios' : ''}>
-                <span className="card-icon">{s.icon}</span>
-                <h3>{s.title}</h3>
-                <p>{s.desc}</p>
+            {BIZ.services.map((s, i) => (
+              <div key={i} className={`scard a d${i + 1}`}>
+                <div className="scard-img-wrap">
+                  <img src={s.img} alt={s.name} className="scard-img" loading="lazy" />
+                </div>
+                <div className="scard-body">
+                  <span className="scard-icon">{s.icon}</span>
+                  <h3 className="scard-name">{s.name}</h3>
+                  <p className="scard-desc">{s.desc}</p>
+                  <a href={wa} target="_blank" rel="noopener noreferrer" className="scard-btn">
+                    Preguntar más →
+                  </a>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
-      <section className="section section-dark" id="proceso">
-        <div className="section-grid">
-          <div className="section-head">
-            <div className="tag">Cómo trabajamos</div>
-            <h2 className="h2">Nuestro <em>proceso</em></h2>
+
+      {/* PROCESS */}
+      <section className="process" id="proceso">
+        <div className="process-cont">
+          <div className="process-head a">
+            <div className="stag">Cómo trabajamos</div>
+            <h2 className="h2">Nuestro <em>proceso</em>.</h2>
           </div>
           <div className="process-grid">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="process-step a">
-                <div className="process-num">{i}</div>
-                <div className="process-title">{safe[`process_${i}_title` as keyof typeof safe]}</div>
-                <div className="process-text">{safe[`process_${i}_text` as keyof typeof safe]}</div>
+            {[
+              { num: '1', title: 'Consulta', text: 'Entendemos tu necesidad y visitamos el espacio' },
+              { num: '2', title: 'Diseño', text: 'Creamos una propuesta personalizada y presupuesto' },
+              { num: '3', title: 'Ejecución', text: 'Realizamos la obra con profesionalismo y calidad' },
+              { num: '4', title: 'Mantenimiento', text: 'Cuidamos tu proyecto a largo plazo' },
+            ].map((p, i) => (
+              <div key={i} className={`process-step a d${i + 1}`}>
+                <div className="process-num">{p.num}</div>
+                <div className="process-title">{p.title}</div>
+                <div className="process-text">{p.text}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
-      <section className="section">
-        <div className="section-grid">
-          <div className="section-head">
-            <div className="tag">Por qué elegirnos</div>
+
+      {/* BENEFITS */}
+      <section className="benefits">
+        <div className="benefits-cont">
+          <div className="benefits-head a">
+            <div className="stag">Por qué elegirnos</div>
             <h2 className="h2">Ventajas de trabajar <em>con nosotros</em></h2>
           </div>
           <div className="benefits-grid">
             {[
-              { icon: '👥', title: 'Equipo profesional' },
-              { icon: '📋', title: 'Transparencia total' },
-              { icon: '✅', title: 'Garantía incluida' },
+              { icon: '👥', title: 'Equipo propio', text: 'Sin intermediarios. Profesionales experimentados en cada proyecto.' },
+              { icon: '📋', title: 'Presupuesto claro', text: 'Sin sorpresas. Lo que presupuestamos es lo que pagas.' },
+              { icon: '✅', title: 'Garantía incluida', text: 'Respaldamos nuestro trabajo con garantía de satisfacción.' },
             ].map((b, i) => (
-              <div key={i} className={`benefit-card a`}>
+              <div key={i} className={`benefit-card a d${i + 1}`}>
                 <span className="benefit-icon">{b.icon}</span>
                 <h3 className="benefit-title">{b.title}</h3>
-                <p className="benefit-text">{safe[`benefit_${i + 1}` as keyof typeof safe]}</p>
+                <p className="benefit-text">{b.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
-      <section className="section section-dark" id="testimonios">
-        <div className="section-grid">
-          <div className="section-head">
-            <div className="tag">Nuestros clientes</div>
-            <h2 className="h2">Ellos ya <em>confían</em> en nosotros</h2>
+
+      {/* BANNER 1 */}
+      <div className="banner1 a">
+        <div>
+          <h2>¿Tienes un proyecto en mente?</h2>
+          <p>Cuéntanos qué necesitas. Presupuesto sin compromiso en menos de 24 horas.</p>
+        </div>
+        <a href="#contacto" className="btn-g" style={{flexShrink:0}}>Pedir presupuesto gratis</a>
+      </div>
+
+      {/* GALLERY */}
+      <section className="gallery" id="galeria">
+        <div className="gallery-cont">
+          <div className="gallery-head a">
+            <div className="stag">Nuestros trabajos</div>
+            <h2 className="h2">Una imagen vale <em>mil palabras</em>.</h2>
           </div>
-          <div className="testimonials-grid">
-            {[1, 2, 3].filter(i => safe[`testimonial_${i}_name` as keyof typeof safe]).map(i => (
-              <div key={i} className={`tcard a`}>
-                <span className="tcard-stars">{'⭐'.repeat(5)}</span>
-                <p className="tcard-text">"{safe[`testimonial_${i}_text` as keyof typeof safe]}"</p>
+          <div className="g-grid">
+            {BIZ.gallery.map((src, i) => (
+              <div key={i} className={`g-item a d${Math.min(i + 1, 6)}`} onClick={() => setLb(i)}>
+                <img src={src} alt={`Trabajo ${i + 1}`} loading="lazy" />
+                <div className="g-overlay"><span>Ver foto</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* LIGHTBOX */}
+      {lb !== null && (
+        <div className="lb" onClick={() => setLb(null)}>
+          <button className="lb-x" onClick={() => setLb(null)}>×</button>
+          <img src={BIZ.gallery[lb]} alt="" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+
+      {/* MARQUEE */}
+      <div className="mq">
+        <div className="mq-inner">
+          {[1,2].map(x => (
+            <span key={x} className="mq-text">
+              {BIZ.trade.toUpperCase()} <em>{BIZ.city}</em>
+              <span className="mq-sep">·</span>
+              CALIDAD <em>garantizada</em>
+              <span className="mq-sep">·</span>
+              {BIZ.years} AÑOS DE <em>experiencia</em>
+              <span className="mq-sep">·</span>
+              PRESUPUESTO <em>sin compromiso</em>
+              <span className="mq-sep">·</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* TESTIMONIALS */}
+      <section className="testi" id="testimonios">
+        <div className="testi-cont">
+          <div className="testi-head a">
+            <div className="stag">Lo que dicen nuestros clientes</div>
+            <h2 className="h2">Ellos ya <em>confían</em> en nosotros.</h2>
+          </div>
+          <div className="t-grid">
+            {BIZ.testimonials.map((t, i) => (
+              <div key={i} className={`tcard a d${i + 1}`}>
+                <span className="tcard-stars">{'★'.repeat(t.stars)}</span>
+                <p className="tcard-text">"{t.text}"</p>
                 <div className="tcard-auth">
-                  <div className="tcard-av">{(safe[`testimonial_${i}_name` as keyof typeof safe] as string)?.[0] || 'C'}</div>
+                  <div className="tcard-av">{t.name.charAt(0)}</div>
                   <div>
-                    <div className="tcard-name">{safe[`testimonial_${i}_name` as keyof typeof safe]}</div>
-                    <div className="tcard-role">{safe[`testimonial_${i}_role` as keyof typeof safe]}</div>
+                    <div className="tcard-name">{t.name}</div>
+                    <div className="tcard-role">{t.role}</div>
                   </div>
                 </div>
               </div>
@@ -454,99 +950,137 @@ export default function PublicLanding() {
           </div>
         </div>
       </section>
-      <section className="section">
-        <div className="section-grid">
-          <div className="section-head">
-            <div className="tag">Preguntas frecuentes</div>
-            <h2 className="h2">Resolvemos tus <em>dudas</em></h2>
+
+      {/* FAQ */}
+      <section className="faq">
+        <div className="faq-cont">
+          <div className="faq-head a">
+            <div className="stag">Preguntas frecuentes</div>
+            <h2 className="h2">Resolvemos tus <em>dudas</em>.</h2>
           </div>
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            {[1, 2, 3, 4].filter(i => safe[`faq_${i}_q` as keyof typeof safe]).map(i => (
-              <div
-                key={i}
-                className={`faq-item a ${openFaq === i ? 'open' : ''}`}
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              >
-                <div className="faq-q">
-                  <span className="faq-question">{safe[`faq_${i}_q` as keyof typeof safe]}</span>
-                  <span className="faq-toggle">▼</span>
-                </div>
-                <div className="faq-a">{safe[`faq_${i}_a` as keyof typeof safe]}</div>
+          {[
+            { q: '¿Cuáles son vuestros precios?', a: 'Los precios dependen del tipo de proyecto, materiales y alcance. Después de la visita, te haremos un presupuesto detallado y sin sorpresas.' },
+            { q: '¿Cuánto tiempo tarda un proyecto?', a: 'Varía según la magnitud. Un mantenimiento es mensual, una reforma pequeña 2-3 meses. Lo veremos en la consulta inicial.' },
+            { q: '¿Dais garantía?', a: 'Sí. Todos nuestros trabajos incluyen garantía de satisfacción y respaldamos la calidad de nuestro trabajo.' },
+            { q: '¿Trabajáis fuera de Madrid?', a: 'Principalmente en Madrid y alrededores. Consulta tu zona y te confirmaremos disponibilidad.' },
+          ].map((item, i) => (
+            <div key={i} className={`faq-item a d${i + 1}`} onClick={(e) => {
+              const el = (e.currentTarget as HTMLElement)
+              el.classList.toggle('open')
+            }}>
+              <div className="faq-q">
+                <span className="faq-question">{item.q}</span>
+                <span className="faq-toggle">▼</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="section" id="contacto">
-        <div className="section-grid">
-          <div className="contact-grid">
-            <div className="al">
-              <div className="tag">Hablemos</div>
-              <h2 className="h2">Cuéntanos tu <em>proyecto</em></h2>
-              <div className="cinfo">
-                <div className="ci">
-                  <div className="ci-ico">📞</div>
-                  <div><div className="ci-lbl">Teléfono / WhatsApp</div><div className="ci-val">{safe.phone}</div></div>
-                </div>
-                <div className="ci">
-                  <div className="ci-ico">✉️</div>
-                  <div><div className="ci-lbl">Email</div><div className="ci-val">{safe.email}</div></div>
-                </div>
-                <div className="ci">
-                  <div className="ci-ico">📍</div>
-                  <div><div className="ci-lbl">Ubicación</div><div className="ci-val">{safe.city}</div></div>
-                </div>
-              </div>
-              <a href={wa} target="_blank" rel="noopener noreferrer" className="wa-btn">💬 Escribir por WhatsApp</a>
+              <div className="faq-a">{item.a}</div>
             </div>
-            <div className="ar">
-              <div className="fcard">
-                {formSent ? (
-                  <div className="sent">
-                    <span className="sent-ico">✨</span>
-                    <h3>¡Mensaje recibido!</h3>
-                    <p>{safe.business_name} te responderá pronto.</p>
+          ))}
+        </div>
+      </section>
+
+      {/* BANNER 2 */}
+      <div className="banner2">
+        <div className="banner2-inner a">
+          <h2>Tu proyecto perfecto está a una llamada.</h2>
+          <p>Sin letra pequeña. Sin sorpresas. Solo resultados que te van a encantar.</p>
+          <a href="#contacto" className="btn-g">Solicitar presupuesto sin compromiso</a>
+        </div>
+      </div>
+
+      {/* CONTACT */}
+      <section className="contact" id="contacto">
+        <div className="contact-cont">
+          <div className="al">
+            <div className="stag">Hablemos</div>
+            <h2 className="h2">Cuéntanos tu <em>proyecto</em>.</h2>
+            <p className="contact-body">Respondemos en menos de 24 horas. Sin compromisos. Solo nos cuentas qué necesitas y te preparamos un presupuesto detallado y gratuito.</p>
+            <div className="cinfo">
+              {[
+                { ico: '📞', lbl: 'Teléfono / WhatsApp', val: BIZ.phone },
+                { ico: '✉️', lbl: 'Email', val: BIZ.email },
+                { ico: '📍', lbl: 'Dirección', val: BIZ.address },
+              ].map((ci, i) => (
+                <div key={i} className="ci">
+                  <div className="ci-ico">{ci.ico}</div>
+                  <div>
+                    <div className="ci-lbl">{ci.lbl}</div>
+                    <div className="ci-val">{ci.val}</div>
                   </div>
-                ) : (
-                  <>
-                    <h3>Solicitar presupuesto</h3>
-                    <p className="fcard-sub">Gratis y sin compromiso</p>
-                    <form onSubmit={e => { e.preventDefault(); setFormSent(true) }}>
-                      <div className="fgrid">
-                        <div className="ffield">
-                          <label>Nombre</label>
-                          <input type="text" placeholder="Tu nombre" required />
-                        </div>
-                        <div className="ffield">
-                          <label>Teléfono</label>
-                          <input type="tel" placeholder="+34 600 000 000" required />
-                        </div>
-                        <div className="ffield fgrid full">
-                          <label>Email</label>
-                          <input type="email" placeholder="tu@email.com" required />
-                        </div>
-                        <div className="ffield fgrid full">
-                          <label>Mensaje</label>
-                          <textarea placeholder="Cuéntanos tu proyecto…" rows={3} required></textarea>
-                        </div>
+                </div>
+              ))}
+            </div>
+            <a href={wa} target="_blank" rel="noopener noreferrer" className="wa-btn">
+              💬 Escribir por WhatsApp
+            </a>
+          </div>
+
+          <div className="ar">
+            <div className="fcard">
+              {formSent ? (
+                <div className="sent">
+                  <span className="sent-ico">🌿</span>
+                  <h3>¡Mensaje recibido!</h3>
+                  <p>{BIZ.name} te responderá antes de 24h. ¡Muchas gracias!</p>
+                </div>
+              ) : (
+                <>
+                  <h3>Solicitar presupuesto</h3>
+                  <p className="fcard-sub">Gratis y sin compromiso · Respuesta en menos de 24h</p>
+                  <form onSubmit={e => { e.preventDefault(); setFormSent(true); }}>
+                    <div className="fg">
+                      <div className="ff">
+                        <label>Nombre *</label>
+                        <input type="text" placeholder="Tu nombre completo" required
+                          value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
                       </div>
-                      <button type="submit" className="fsubmit">Enviar solicitud →</button>
-                    </form>
-                  </>
-                )}
-              </div>
+                      <div className="ff">
+                        <label>Teléfono *</label>
+                        <input type="tel" placeholder="+34 600 000 000" required
+                          value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+                      </div>
+                      <div className="ff full">
+                        <label>Email</label>
+                        <input type="email" placeholder="tu@email.com"
+                          value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                      </div>
+                      <div className="ff full">
+                        <label>¿Qué necesitas?</label>
+                        <select value={form.service} onChange={e => setForm({ ...form, service: e.target.value })}>
+                          <option value="">Selecciona un servicio…</option>
+                          {BIZ.services.map(s => <option key={s.name}>{s.name}</option>)}
+                          <option>Otro servicio</option>
+                        </select>
+                      </div>
+                      <div className="ff full">
+                        <label>Cuéntanos tu proyecto</label>
+                        <textarea
+                          placeholder="Describe el espacio, lo que buscas, tamaño aproximado… Cualquier detalle nos ayuda."
+                          value={form.msg} onChange={e => setForm({ ...form, msg: e.target.value })} />
+                      </div>
+                    </div>
+                    <button type="submit" className="f-submit">Enviar solicitud →</button>
+                  </form>
+                </>
+              )}
             </div>
           </div>
         </div>
       </section>
+
+      {/* FOOTER */}
       <footer className="footer">
         <div>
-          <div className="footer-brand">{safe.business_name.split(' ')[0]}</div>
-          <div className="footer-copy">© {new Date().getFullYear()} · {safe.city}</div>
+          <div className="footer-brand">{BIZ.name.split(' ')[0]}<span>.</span></div>
+          <div className="footer-copy">© {new Date().getFullYear()} {BIZ.name} · {BIZ.city}</div>
         </div>
-        <div className="footer-powered">Creado con <strong style={{ color: colors.accent }}>Clientos</strong></div>
+        <div className="footer-powered">Creado con <span>Clientos</span></div>
       </footer>
-      <a href={wa} target="_blank" rel="noopener noreferrer" className="waf">💬</a>
+
+      {/* WA FLOAT */}
+      <a href={wa} target="_blank" rel="noopener noreferrer" className="waf">
+        💬
+        <span className="waf-tip">¡Escríbenos ahora!</span>
+      </a>
     </>
   )
 }
