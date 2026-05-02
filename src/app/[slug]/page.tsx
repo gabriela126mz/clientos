@@ -192,7 +192,7 @@ export default function LandingPage() {
           transition:all .35s ease;
         }
         .nav.sc {
-          background:rgba(45,90,39,.95);
+          background:rgba(${parseInt(colors.primary.slice(1,3),16)}, ${parseInt(colors.primary.slice(3,5),16)}, ${parseInt(colors.primary.slice(5,7),16)}, 0.95);  /* ✅ DINÁMICO */
           backdrop-filter:blur(20px);
           padding:.85rem 3.5rem;
           box-shadow:0 2px 24px rgba(0,0,0,.18);
