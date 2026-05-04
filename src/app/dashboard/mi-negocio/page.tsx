@@ -65,9 +65,9 @@ interface ProfileData {
   color_accent?: string
 }
 
-const inputStyle = { padding: '.75rem', border: '1px solid #ddd', borderRadius: '6px', fontFamily: 'inherit', fontSize: '.9rem' }
-const labelStyle = { fontWeight: 600, fontSize: '.85rem', textTransform: 'uppercase' as const, color: '#2d5a27' }
-const sectionStyle = { padding: '1.5rem', background: '#f9f6f0', borderRadius: '8px', marginBottom: '2rem' }
+const inputStyle = { padding: '.9rem', border: '1px solid #ddd', borderRadius: '8px', fontFamily: 'inherit', fontSize: '.9rem', width: '100%' }
+const labelStyle = { fontWeight: 700, fontSize: '.8rem', textTransform: 'uppercase' as const, color: '#2d5a27', marginBottom: '.5rem', display: 'block' }
+const sectionStyle = { padding: '2rem', background: '#f9f6f0', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #e5dcc9' }
 
 export default function MiNegocio() {
   const { user, loading: authLoading } = useAuth()
@@ -78,7 +78,6 @@ export default function MiNegocio() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [section, setSection] = useState<'datos' | 'landing' | 'galeria'>('datos')
   const [form, setForm] = useState<Partial<ProfileData>>({})
   const [tradeConfig, setTradeConfig] = useState(getTradeConfig('emprendedor'))
 
@@ -123,9 +122,7 @@ export default function MiNegocio() {
     setMessage('')
 
     try {
-      const updateData = {
-        ...form,
-      }
+      const updateData = { ...form }
 
       const { error } = await supabase
         .from('profiles')
@@ -137,9 +134,9 @@ export default function MiNegocio() {
         return
       }
 
-      setMessage('✅ Cambios guardados')
+      setMessage('✅ Cambios guardados correctamente')
       await loadProfile()
-      setTimeout(() => setMessage(''), 3000)
+      setTimeout(() => setMessage(''), 4000)
     } catch (err) {
       setMessage('❌ Error inesperado')
     } finally {
@@ -192,7 +189,7 @@ export default function MiNegocio() {
       color_secondary: config.colors.secondary,
       color_accent: config.colors.accent,
     })
-    setMessage('✨ Plantilla aplicada')
+    setMessage('✨ Plantilla aplicada correctamente')
     setTimeout(() => setMessage(''), 2000)
   }
 
@@ -200,6 +197,20 @@ export default function MiNegocio() {
     setForm({ ...form, trade: newTrade })
     const newConfig = getTradeConfig(newTrade)
     setTradeConfig(newConfig)
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, tipo: 'logo' | 'hero') => {
+    if (e.target.files?.[0]) {
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        if (tipo === 'logo') {
+          setForm({ ...form, logo_url: evt.target?.result as string })
+        } else {
+          setForm({ ...form, hero_image_url: evt.target?.result as string })
+        }
+      }
+      reader.readAsDataURL(e.target.files[0])
+    }
   }
 
   const removeImage = (tipo: 'logo' | 'hero') => {
@@ -231,8 +242,8 @@ export default function MiNegocio() {
         <Sidebar active="/dashboard/mi-negocio" />
         <main className={styles.main} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #e2ddd4', borderTopColor: '#2d5a27', borderRadius: '50%', margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
-            <p style={{ color: '#64748b' }}>Cargando...</p>
+            <div style={{ width: 50, height: 50, border: '4px solid #e2ddd4', borderTopColor: '#2d5a27', borderRadius: '50%', margin: '0 auto 1.5rem', animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: '#64748b', fontSize: '.95rem' }}>Cargando tu negocio...</p>
           </div>
         </main>
       </div>
@@ -244,17 +255,17 @@ export default function MiNegocio() {
       <Sidebar active="/dashboard/mi-negocio" />
 
       <main className={styles.main}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '.5rem', color: '#1a2818' }}>Mi negocio</h1>
-            <p style={{ color: '#64748b', fontSize: '.95rem' }}>Crea y personaliza tu landing premium</p>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '.5rem', color: '#1a2818' }}>Mi negocio</h1>
+            <p style={{ color: '#64748b', fontSize: '.95rem' }}>Personaliza tu landing profesional</p>
           </div>
           {form.slug && (
             <a href={`/${form.slug}`} target="_blank" rel="noopener noreferrer" style={{
-              padding: '.75rem 1.5rem',
+              padding: '.85rem 1.8rem',
               background: '#2d5a27',
               color: 'white',
-              borderRadius: '6px',
+              borderRadius: '8px',
               fontWeight: 700,
               fontSize: '.85rem',
               textDecoration: 'none',
@@ -262,7 +273,7 @@ export default function MiNegocio() {
               transition: 'all .2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '.5rem',
+              gap: '.6rem',
               whiteSpace: 'nowrap',
             }} onMouseEnter={e => e.currentTarget.style.background = '#1f4620'} onMouseLeave={e => e.currentTarget.style.background = '#2d5a27'}>
               👁️ Ver mi landing
@@ -272,383 +283,375 @@ export default function MiNegocio() {
 
         {message && (
           <div style={{
-            padding: '1rem 1.4rem',
-            borderRadius: 8,
+            padding: '1.1rem 1.5rem',
+            borderRadius: 10,
             background: message.includes('✅') ? '#dcfce7' : message.includes('✨') ? '#fef3c7' : '#fee2e2',
             color: message.includes('✅') ? '#166534' : message.includes('✨') ? '#92400e' : '#991f1f',
-            marginBottom: '1.5rem',
-            fontSize: '.875rem',
-            fontWeight: 600,
+            marginBottom: '2rem',
+            fontSize: '.9rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '.75rem',
           }}>
+            <span style={{ fontSize: '1.3rem' }}>{message.includes('✅') ? '✅' : message.includes('✨') ? '✨' : '❌'}</span>
             {message}
           </div>
         )}
 
-        {/* TABS - SIN COLORES */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #e5dcc9', paddingBottom: '1rem', flexWrap: 'wrap' }}>
-          {[
-            { id: 'datos', label: '📋 Datos' },
-            { id: 'landing', label: '🎨 Landing' },
-            { id: 'galeria', label: '🖼️ Galería' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setSection(tab.id as any)}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: section === tab.id ? '#2d5a27' : 'transparent',
-                color: section === tab.id ? 'white' : '#666',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: section === tab.id ? 700 : 500,
-                fontSize: '.9rem',
-                transition: 'all .2s',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* BOTÓN APLICAR PLANTILLA ARRIBA */}
+        <button onClick={aplicarPlantilla} style={{
+          padding: '1rem 2rem',
+          background: 'linear-gradient(135deg, #ce93d8, #ba68c8)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '10px',
+          fontWeight: 700,
+          fontSize: '.9rem',
+          cursor: 'pointer',
+          marginBottom: '2.5rem',
+          transition: 'all .3s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '.75rem',
+        }} onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(206, 147, 216, 0.4)'
+        }} onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none'
+          e.currentTarget.style.boxShadow = 'none'
+        }}>
+          ✨ Aplicar plantilla de {tradeConfig.name}
+        </button>
 
         <form onSubmit={save}>
-          {/* DATOS */}
-          {section === 'datos' && (
-            <div>
-              <div style={{ ...sectionStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Nombre negocio</span>
-                  <input type="text" value={form.business_name || ''} onChange={e => setForm({ ...form, business_name: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Oficio</span>
-                  <select value={form.trade || 'emprendedor'} onChange={e => handleTradeChange(e.target.value)} style={inputStyle}>
-                    {Object.values(TRADES).map(t => <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>)}
-                  </select>
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Tu nombre</span>
-                  <input type="text" value={form.owner_name || ''} onChange={e => setForm({ ...form, owner_name: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>WhatsApp</span>
-                  <input type="tel" value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Email</span>
-                  <input type="email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Ciudad</span>
-                  <input type="text" value={form.city || ''} onChange={e => setForm({ ...form, city: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Dirección</span>
-                  <input type="text" value={form.address || ''} onChange={e => setForm({ ...form, address: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Años experiencia</span>
-                  <input type="text" value={form.experience_years || ''} onChange={e => setForm({ ...form, experience_years: e.target.value })} style={inputStyle} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Slug (URL)</span>
-                  <input type="text" value={form.slug || ''} onChange={e => setForm({ ...form, slug: e.target.value })} style={inputStyle} />
-                </label>
-              </div>
-
-              {/* IMÁGENES EN DATOS */}
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.5rem', marginTop: '2rem' }}>Imágenes</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                {/* LOGO */}
-                <div style={sectionStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h4 style={{ fontWeight: 700 }}>Logo</h4>
-                    {form.logo_url && <button type="button" onClick={() => removeImage('logo')} style={{ color: '#dc2626', fontSize: '.75rem', fontWeight: 700, background: 'transparent', border: 'none', cursor: 'pointer' }}>✕ Eliminar</button>}
-                  </div>
-                  
-                  {form.logo_url ? (
-                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1rem' }}>
-                      <img src={form.logo_url} alt="Logo" style={{ maxWidth: '100%', maxHeight: 120, borderRadius: 8 }} />
-                      <button
-                        type="button"
-                        onClick={() => removeImage('logo')}
-                        style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          width: '32px',
-                          height: '32px',
-                          background: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          fontSize: '1.2rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <label style={{ display: 'block', padding: '1.5rem', border: '2px dashed #ddd', borderRadius: '8px', cursor: 'pointer', textAlign: 'center' }}>
-                      <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && addGalleryImage(e.target.files[0])} style={{ display: 'none' }} />
-                      <div style={{ fontSize: '1.5rem', marginBottom: '.5rem' }}>🖼️</div>
-                      <div style={{ fontSize: '.85rem', color: '#666' }}>Subir logo</div>
-                    </label>
-                  )}
-                </div>
-
-                {/* HERO IMAGE */}
-                <div style={sectionStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h4 style={{ fontWeight: 700 }}>Imagen Principal</h4>
-                    {form.hero_image_url && <button type="button" onClick={() => removeImage('hero')} style={{ color: '#dc2626', fontSize: '.75rem', fontWeight: 700, background: 'transparent', border: 'none', cursor: 'pointer' }}>✕ Eliminar</button>}
-                  </div>
-
-                  {form.hero_image_url ? (
-                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1rem', width: '100%' }}>
-                      <img src={form.hero_image_url} alt="Hero" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} />
-                      <button
-                        type="button"
-                        onClick={() => removeImage('hero')}
-                        style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          width: '32px',
-                          height: '32px',
-                          background: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          fontSize: '1.2rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <label style={{ display: 'block', padding: '1.5rem', border: '2px dashed #ddd', borderRadius: '8px', cursor: 'pointer', textAlign: 'center' }}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => {
-                          if (e.target.files?.[0]) {
-                            const reader = new FileReader()
-                            reader.onload = (evt) => setForm({ ...form, hero_image_url: evt.target?.result as string })
-                            reader.readAsDataURL(e.target.files[0])
-                          }
-                        }}
-                        style={{ display: 'none' }}
-                      />
-                      <div style={{ fontSize: '1.5rem', marginBottom: '.5rem' }}>🌿</div>
-                      <div style={{ fontSize: '.85rem', color: '#666' }}>Foto principal</div>
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              <button type="button" onClick={aplicarPlantilla} style={{ marginTop: '2rem', padding: '.75rem 1.5rem', background: '#ce93d8', color: '#2d0052', border: 'none', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
-                ✨ Aplicar plantilla del oficio
-              </button>
+          {/* DATOS BÁSICOS */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>📋 Datos básicos</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              <label>
+                <span style={labelStyle}>Nombre del negocio</span>
+                <input type="text" value={form.business_name || ''} onChange={e => setForm({ ...form, business_name: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Tu nombre</span>
+                <input type="text" value={form.owner_name || ''} onChange={e => setForm({ ...form, owner_name: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Oficio / Profesión</span>
+                <select value={form.trade || 'emprendedor'} onChange={e => handleTradeChange(e.target.value)} style={inputStyle}>
+                  {Object.values(TRADES).map(t => <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span style={labelStyle}>URL de tu landing (slug)</span>
+                <input type="text" value={form.slug || ''} onChange={e => setForm({ ...form, slug: e.target.value })} style={inputStyle} placeholder="miempresa" />
+              </label>
+              <label>
+                <span style={labelStyle}>Teléfono / WhatsApp</span>
+                <input type="tel" value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Email</span>
+                <input type="email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Ciudad</span>
+                <input type="text" value={form.city || ''} onChange={e => setForm({ ...form, city: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Dirección</span>
+                <input type="text" value={form.address || ''} onChange={e => setForm({ ...form, address: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Años de experiencia</span>
+                <input type="number" value={form.experience_years || ''} onChange={e => setForm({ ...form, experience_years: e.target.value })} style={inputStyle} />
+              </label>
             </div>
-          )}
+          </div>
 
-          {/* LANDING */}
-          {section === 'landing' && (
-            <div>
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Hero</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <span style={labelStyle}>Titular principal</span>
-                    <input type="text" value={form.headline || ''} onChange={e => setForm({ ...form, headline: e.target.value })} style={inputStyle} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <span style={labelStyle}>Subtítulo</span>
-                    <input type="text" value={form.subtitle || ''} onChange={e => setForm({ ...form, subtitle: e.target.value })} style={inputStyle} />
-                  </label>
-                  <label style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <span style={labelStyle}>Introducción</span>
-                    <textarea value={form.intro_text || ''} onChange={e => setForm({ ...form, intro_text: e.target.value })} rows={3} style={{...inputStyle, resize: 'vertical' }} />
-                  </label>
-                </div>
-              </div>
-
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Servicios (3)</h3>
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  {[1, 2, 3].map(i => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Servicio {i}</span>
-                        <input type="text" value={form[`service_${i}_title` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`service_${i}_title`]: e.target.value })} style={inputStyle} />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Descripción</span>
-                        <input type="text" value={form[`service_${i}_desc` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`service_${i}_desc`]: e.target.value })} style={inputStyle} />
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Beneficios (3)</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                  {[1, 2, 3].map(i => (
-                    <label key={i} style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                      <span style={labelStyle}>Beneficio {i}</span>
-                      <input type="text" value={form[`benefit_${i}` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`benefit_${i}`]: e.target.value })} style={inputStyle} />
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Proceso (4 pasos)</h3>
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Paso {i} - Título</span>
-                        <input type="text" value={form[`process_${i}_title` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`process_${i}_title`]: e.target.value })} style={inputStyle} />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Descripción</span>
-                        <input type="text" value={form[`process_${i}_text` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`process_${i}_text`]: e.target.value })} style={inputStyle} />
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Testimonios (3)</h3>
-                <div style={{ display: 'grid', gap: '1.5rem' }}>
-                  {[1, 2, 3].map(i => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Nombre {i}</span>
-                        <input type="text" value={form[`testimonial_${i}_name` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_name`]: e.target.value })} style={inputStyle} />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Rol</span>
-                        <input type="text" value={form[`testimonial_${i}_role` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_role`]: e.target.value })} style={inputStyle} />
-                      </label>
-                      <label style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Opinión</span>
-                        <textarea value={form[`testimonial_${i}_text` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_text`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical' }} />
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>FAQ (4 preguntas)</h3>
-                <div style={{ display: 'grid', gap: '1.5rem' }}>
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i}>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '.5rem' }}>
-                        <span style={labelStyle}>Pregunta {i}</span>
-                        <input type="text" value={form[`faq_${i}_q` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`faq_${i}_q`]: e.target.value })} style={inputStyle} />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                        <span style={labelStyle}>Respuesta</span>
-                        <textarea value={form[`faq_${i}_a` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`faq_${i}_a`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical' }} />
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={sectionStyle}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  <span style={labelStyle}>Mensaje WhatsApp predeterminado</span>
-                  <textarea value={form.whatsapp_message || ''} onChange={e => setForm({ ...form, whatsapp_message: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical' }} />
+          {/* IMÁGENES */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>🖼️ Imágenes</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
+              {/* LOGO */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '.75rem' }}>
+                  <span style={labelStyle}>Logo</span>
                 </label>
+                {form.logo_url ? (
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img src={form.logo_url} alt="Logo" style={{ maxWidth: '100%', maxHeight: 150, borderRadius: 8 }} />
+                    <button type="button" onClick={() => removeImage('logo')} style={{
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-12px',
+                      width: '40px',
+                      height: '40px',
+                      background: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '1.2rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>×</button>
+                  </div>
+                ) : (
+                  <label style={{ display: 'block', padding: '2rem', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa', transition: 'all .3s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#2d5a27'} onMouseLeave={e => e.currentTarget.style.borderColor = '#ddd'}>
+                    <input type="file" accept="image/*" onChange={e => handleImageChange(e, 'logo')} style={{ display: 'none' }} />
+                    <div style={{ fontSize: '2.5rem', marginBottom: '.5rem' }}>🖼️</div>
+                    <div style={{ fontSize: '.85rem', color: '#666' }}>Sube tu logo</div>
+                  </label>
+                )}
+              </div>
+
+              {/* IMAGEN HERO */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '.75rem' }}>
+                  <span style={labelStyle}>Imagen principal</span>
+                </label>
+                {form.hero_image_url ? (
+                  <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                    <img src={form.hero_image_url} alt="Hero" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} />
+                    <button type="button" onClick={() => removeImage('hero')} style={{
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-12px',
+                      width: '40px',
+                      height: '40px',
+                      background: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '1.2rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>×</button>
+                  </div>
+                ) : (
+                  <label style={{ display: 'block', padding: '2rem', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa', transition: 'all .3s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#2d5a27'} onMouseLeave={e => e.currentTarget.style.borderColor = '#ddd'}>
+                    <input type="file" accept="image/*" onChange={e => handleImageChange(e, 'hero')} style={{ display: 'none' }} />
+                    <div style={{ fontSize: '2.5rem', marginBottom: '.5rem' }}>🌄</div>
+                    <div style={{ fontSize: '.85rem', color: '#666' }}>Sube imagen principal</div>
+                  </label>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
           {/* GALERÍA */}
-          {section === 'galeria' && (
-            <div>
-              <div style={sectionStyle}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Tus fotos</h3>
-                <label style={{ display: 'block', padding: '2rem', border: '2px dashed #2d5a27', borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: '#fef7f2', transition: 'all .2s' }}>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={e => Array.from(e.target.files || []).forEach(file => addGalleryImage(file))}
-                    style={{ display: 'none' }}
-                  />
-                  <div style={{ fontSize: '2.5rem', marginBottom: '.5rem' }}>📸</div>
-                  <div style={{ fontWeight: 600, color: '#1a2818', marginBottom: '.25rem' }}>Sube tus fotos aquí</div>
-                  <div style={{ fontSize: '.85rem', color: '#999' }}>O arrastra y suelta</div>
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>📸 Galería de fotos</h2>
+            <label style={{ display: 'block', padding: '2.5rem', border: '2px dashed #2d5a27', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fef7f2', marginBottom: '2rem', transition: 'all .3s' }} onMouseEnter={e => { e.currentTarget.style.background = '#f9f6f0'; e.currentTarget.style.borderColor = '#1f4620' }} onMouseLeave={e => { e.currentTarget.style.background = '#fef7f2'; e.currentTarget.style.borderColor = '#2d5a27' }}>
+              <input type="file" multiple accept="image/*" onChange={e => Array.from(e.target.files || []).forEach(file => addGalleryImage(file))} style={{ display: 'none' }} />
+              <div style={{ fontSize: '3rem', marginBottom: '.75rem' }}>📸</div>
+              <div style={{ fontWeight: 700, color: '#1a2818', marginBottom: '.3rem' }}>Sube tus fotos aquí</div>
+              <div style={{ fontSize: '.85rem', color: '#999' }}>O arrastra y suelta</div>
+            </label>
+
+            {form.gallery_urls && form.gallery_urls.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>Fotos cargadas ({form.gallery_urls.length})</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1.5rem' }}>
+                  {form.gallery_urls.map((url, i) => (
+                    <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,.1)', aspectRatio: '1' }}>
+                      <img src={url} alt={`Foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <button type="button" onClick={() => removeGalleryImage(i)} style={{
+                        position: 'absolute',
+                        top: '.5rem',
+                        right: '.5rem',
+                        width: '36px',
+                        height: '36px',
+                        background: 'rgba(220, 38, 38, 0.95)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '1.2rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all .2s',
+                        boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+                      }} onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'scale(1.1)' }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.95)'; e.currentTarget.style.transform = 'scale(1)' }}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* HERO */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>⭐ Hero (Portada)</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <label>
+                <span style={labelStyle}>Titular principal</span>
+                <input type="text" value={form.headline || ''} onChange={e => setForm({ ...form, headline: e.target.value })} style={inputStyle} />
+              </label>
+              <label>
+                <span style={labelStyle}>Subtítulo</span>
+                <input type="text" value={form.subtitle || ''} onChange={e => setForm({ ...form, subtitle: e.target.value })} style={inputStyle} />
+              </label>
+              <label style={{ gridColumn: '1/-1' }}>
+                <span style={labelStyle}>Introducción</span>
+                <textarea value={form.intro_text || ''} onChange={e => setForm({ ...form, intro_text: e.target.value })} rows={3} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+              </label>
+            </div>
+          </div>
+
+          {/* SERVICIOS */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>🎯 Servicios (3)</h2>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: i < 3 ? '1px solid #e5dcc9' : 'none' }}>
+                <label>
+                  <span style={labelStyle}>Servicio {i}</span>
+                  <input type="text" value={form[`service_${i}_title` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`service_${i}_title`]: e.target.value })} style={inputStyle} />
+                </label>
+                <label>
+                  <span style={labelStyle}>Descripción</span>
+                  <input type="text" value={form[`service_${i}_desc` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`service_${i}_desc`]: e.target.value })} style={inputStyle} />
                 </label>
               </div>
+            ))}
+          </div>
 
-              {form.gallery_urls && form.gallery_urls.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Fotos cargadas ({form.gallery_urls.length})</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.5rem' }}>
-                    {form.gallery_urls.map((url, i) => (
-                      <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }}>
-                        <img src={url} alt={`Foto ${i + 1}`} style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
-                        <button
-                          type="button"
-                          onClick={() => removeGalleryImage(i)}
-                          style={{
-                            position: 'absolute',
-                            top: '.75rem',
-                            right: '.75rem',
-                            width: '36px',
-                            height: '36px',
-                            background: 'rgba(220, 38, 38, 0.95)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '50%',
-                            cursor: 'pointer',
-                            fontWeight: 700,
-                            fontSize: '1.3rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all .2s',
-                            boxShadow: '0 2px 8px rgba(0,0,0,.2)',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.95)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {/* BENEFICIOS */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>💎 Beneficios (3)</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+              {[1, 2, 3].map(i => (
+                <label key={i}>
+                  <span style={labelStyle}>Beneficio {i}</span>
+                  <input type="text" value={form[`benefit_${i}` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`benefit_${i}`]: e.target.value })} style={inputStyle} />
+                </label>
+              ))}
             </div>
-          )}
+          </div>
 
-          {/* BOTONES */}
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e5dcc9' }}>
-            <button type="button" onClick={() => setForm(profile!)} style={{ padding: '.75rem 1.5rem', background: 'transparent', color: '#666', border: '1px solid #ddd', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>
-              Descartar
+          {/* PROCESO */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>🔄 Proceso (4 pasos)</h2>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: i < 4 ? '1px solid #e5dcc9' : 'none' }}>
+                <label>
+                  <span style={labelStyle}>Paso {i} - Título</span>
+                  <input type="text" value={form[`process_${i}_title` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`process_${i}_title`]: e.target.value })} style={inputStyle} />
+                </label>
+                <label>
+                  <span style={labelStyle}>Descripción</span>
+                  <input type="text" value={form[`process_${i}_text` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`process_${i}_text`]: e.target.value })} style={inputStyle} />
+                </label>
+              </div>
+            ))}
+          </div>
+
+          {/* TESTIMONIOS */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>⭐ Testimonios (3)</h2>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ paddingBottom: i < 3 ? '1.5rem' : '0', borderBottom: i < 3 ? '1px solid #e5dcc9' : 'none', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
+                  <label>
+                    <span style={labelStyle}>Nombre {i}</span>
+                    <input type="text" value={form[`testimonial_${i}_name` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_name`]: e.target.value })} style={inputStyle} />
+                  </label>
+                  <label>
+                    <span style={labelStyle}>Rol / Empresa</span>
+                    <input type="text" value={form[`testimonial_${i}_role` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_role`]: e.target.value })} style={inputStyle} />
+                  </label>
+                </div>
+                <label>
+                  <span style={labelStyle}>Opinión</span>
+                  <textarea value={form[`testimonial_${i}_text` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_text`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+                </label>
+              </div>
+            ))}
+          </div>
+
+          {/* FAQ */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>❓ FAQ (4 preguntas)</h2>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} style={{ paddingBottom: '1.5rem', borderBottom: i < 4 ? '1px solid #e5dcc9' : 'none', marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '1rem' }}>
+                  <span style={labelStyle}>Pregunta {i}</span>
+                  <input type="text" value={form[`faq_${i}_q` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`faq_${i}_q`]: e.target.value })} style={inputStyle} />
+                </label>
+                <label>
+                  <span style={labelStyle}>Respuesta</span>
+                  <textarea value={form[`faq_${i}_a` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`faq_${i}_a`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+                </label>
+              </div>
+            ))}
+          </div>
+
+          {/* WHATSAPP Y COLORES */}
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>💬 WhatsApp y Colores</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
+              <label style={{ gridColumn: '1/-1' }}>
+                <span style={labelStyle}>Mensaje WhatsApp predeterminado</span>
+                <textarea value={form.whatsapp_message || ''} onChange={e => setForm({ ...form, whatsapp_message: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+              </label>
+              <label>
+                <span style={labelStyle}>Color primario</span>
+                <input type="color" value={form.color_primary || tradeConfig.colors.primary} onChange={e => setForm({ ...form, color_primary: e.target.value })} style={{...inputStyle, height: '50px', cursor: 'pointer'}} />
+              </label>
+              <label>
+                <span style={labelStyle}>Color secundario</span>
+                <input type="color" value={form.color_secondary || tradeConfig.colors.secondary} onChange={e => setForm({ ...form, color_secondary: e.target.value })} style={{...inputStyle, height: '50px', cursor: 'pointer'}} />
+              </label>
+              <label>
+                <span style={labelStyle}>Color acento</span>
+                <input type="color" value={form.color_accent || tradeConfig.colors.accent} onChange={e => setForm({ ...form, color_accent: e.target.value })} style={{...inputStyle, height: '50px', cursor: 'pointer'}} />
+              </label>
+            </div>
+          </div>
+
+          {/* BOTONES FINALES */}
+          <div style={{ display: 'flex', gap: '1.5rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '2px solid #e5dcc9' }}>
+            <button type="button" onClick={() => setForm(profile!)} style={{
+              padding: '.9rem 2rem',
+              background: 'transparent',
+              color: '#666',
+              border: '1.5px solid #ddd',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all .3s',
+            }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#333' }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#666' }}>
+              Descartar cambios
             </button>
-            <button type="submit" disabled={saving} style={{ padding: '.75rem 1.5rem', background: '#2d5a27', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Guardando…' : '✅ Guardar cambios'}
+            <button type="submit" disabled={saving} style={{
+              flex: 1,
+              padding: '.9rem 2rem',
+              background: '#2d5a27',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              opacity: saving ? 0.7 : 1,
+              fontSize: '.95rem',
+              transition: 'all .3s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '.75rem',
+            }} onMouseEnter={e => !saving && (e.currentTarget.style.background = '#1f4620')} onMouseLeave={e => e.currentTarget.style.background = '#2d5a27'}>
+              {saving ? '⏳ Guardando...' : '✅ Guardar todos los cambios'}
             </button>
           </div>
         </form>
