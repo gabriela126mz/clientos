@@ -292,18 +292,40 @@ export function normalizeTradeId(tradeId: string): string {
     .replace(/\s+/g, '-')
 
   const aliases: Record<string, string> = {
+    // Gastronomía
     chef: 'cocinero',
     cocina: 'cocinero',
+    cocinero: 'cocinero',
     cocinera: 'cocinero',
     catering: 'cocinero',
+    caterin: 'cocinero',
     restaurante: 'cocinero',
     restaurantes: 'cocinero',
+    comida: 'cocinero',
+    gastronomia: 'cocinero',
+    gastronomico: 'cocinero',
+
+    // Jardín / exteriores
+    jardin: 'jardineria',
     jardinero: 'jardineria',
+    jardinera: 'jardineria',
     jardines: 'jardineria',
+    paisajista: 'paisajismo',
+
+    // Construcción / reformas
     reforma: 'reformas',
+    reformista: 'reformas',
+    obra: 'reformas',
+    obras: 'reformas',
     construccion: 'reformas',
+    constructor: 'reformas',
+
+    // Transporte
+    mudanza: 'transporte',
     mudanzas: 'transporte',
     transportista: 'transporte',
+    transporte: 'transporte',
+    repartidor: 'transporte',
   }
 
   return aliases[normalized] || normalized
