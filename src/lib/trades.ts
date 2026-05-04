@@ -331,7 +331,219 @@ export function normalizeTradeId(tradeId: string): string {
   return aliases[normalized] || normalized
 }
 
+
+function titleFromTradeId(id: string): string {
+  return (id || 'emprendedor')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
+type AutoPreset = {
+  emoji: string
+  category: string
+  colors: TradeConfig['colors']
+  heroImage: string
+  galleryImages: string[]
+  services: Array<{ name: string; desc: string; icon: string }>
+  benefits: string[]
+  process: Array<{ title: string; text: string }>
+  faqs: Array<{ q: string; a: string }>
+}
+
+const AUTO_PRESETS: Record<string, AutoPreset> = {
+  gastronomia: {
+    emoji: '🍽️', category: 'gastronomia',
+    colors: { primary: '#2b1714', secondary: '#8a3a2f', accent: '#d6a462', cream: '#fff5ed', ink: '#1f1713' },
+    heroImage: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1800&q=88&fit=crop&auto=format',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1543353071-10c8ba85a904?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1555244162-803834f70033?w=1200&q=88&fit=crop&auto=format',
+    ],
+    services: [
+      { name: 'Servicio personalizado', desc: 'Una propuesta adaptada al momento, al número de personas y al estilo que buscas.', icon: '✨' },
+      { name: 'Atención directa', desc: 'Comunicación clara para resolver dudas, disponibilidad y detalles antes de reservar.', icon: '💬' },
+      { name: 'Experiencia cuidada', desc: 'Presentación, puntualidad y cuidado en cada detalle del servicio.', icon: '🍽️' },
+    ],
+    benefits: ['✅ Propuesta clara desde el inicio', '💬 Comunicación directa por WhatsApp', '✨ Experiencia cuidada al detalle'],
+    process: [
+      { title: 'Consulta', text: 'Cuéntanos qué necesitas y cuándo lo necesitas.' },
+      { title: 'Propuesta', text: 'Recibe una opción clara y adaptada.' },
+      { title: 'Preparación', text: 'Organizamos los detalles del servicio.' },
+      { title: 'Experiencia', text: 'Disfruta el resultado con tranquilidad.' },
+    ],
+    faqs: [
+      { q: '¿Cómo puedo consultar disponibilidad?', a: 'Puedes escribir por WhatsApp indicando fecha, zona y tipo de servicio. Te responderán con orientación clara.' },
+      { q: '¿El presupuesto es sin compromiso?', a: 'Sí. Primero se revisa lo que necesitas y después se comparte una propuesta.' },
+      { q: '¿Se puede personalizar el servicio?', a: 'Sí. La propuesta se adapta al tipo de cliente, evento o necesidad.' },
+      { q: '¿Dónde prestan servicio?', a: 'Consulta la zona indicada en la web o escribe por WhatsApp para confirmar disponibilidad.' },
+    ],
+  },
+  belleza: {
+    emoji: '💎', category: 'belleza',
+    colors: { primary: '#3a2030', secondary: '#9b4f73', accent: '#e0b7c8', cream: '#fff3f7', ink: '#221821' },
+    heroImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1800&q=88&fit=crop&auto=format',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=1200&q=88&fit=crop&auto=format',
+    ],
+    services: [
+      { name: 'Atención personalizada', desc: 'Tratamiento o servicio adaptado a lo que necesitas y al resultado que buscas.', icon: '💎' },
+      { name: 'Reserva directa', desc: 'Consulta disponibilidad y horarios de forma rápida por WhatsApp.', icon: '📅' },
+      { name: 'Resultado cuidado', desc: 'Detalle, higiene y acabado profesional en cada cita.', icon: '✨' },
+    ],
+    benefits: ['✨ Resultado cuidado', '📅 Reserva rápida', '🤍 Atención cercana'],
+    process: [
+      { title: 'Consulta', text: 'Cuéntanos qué resultado buscas.' },
+      { title: 'Reserva', text: 'Confirmamos disponibilidad y horario.' },
+      { title: 'Servicio', text: 'Realizamos el tratamiento con cuidado.' },
+      { title: 'Resultado', text: 'Te vas con una experiencia completa.' },
+    ],
+    faqs: [
+      { q: '¿Cómo reservo cita?', a: 'Escribe por WhatsApp y confirma disponibilidad según el servicio que necesitas.' },
+      { q: '¿Puedo pedir orientación antes?', a: 'Sí. Puedes enviar tu consulta y recibir una recomendación inicial.' },
+      { q: '¿Dónde está ubicado el servicio?', a: 'La dirección o zona aparece en esta web. También puedes pedir indicaciones por WhatsApp.' },
+      { q: '¿Qué métodos de pago aceptan?', a: 'Consulta directamente por WhatsApp para confirmar las opciones disponibles.' },
+    ],
+  },
+  hogar: {
+    emoji: '🏠', category: 'hogar',
+    colors: { primary: '#1f3142', secondary: '#48657a', accent: '#caa76a', cream: '#f6f1ea', ink: '#121820' },
+    heroImage: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1800&q=88&fit=crop&auto=format',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1590644365607-1c5a432540e3?w=1200&q=88&fit=crop&auto=format',
+    ],
+    services: [
+      { name: 'Visita o diagnóstico', desc: 'Revisión inicial para entender el trabajo y proponer la mejor solución.', icon: '🔎' },
+      { name: 'Presupuesto claro', desc: 'Propuesta explicada con tiempos, alcance y condiciones antes de empezar.', icon: '📋' },
+      { name: 'Trabajo profesional', desc: 'Ejecución cuidada, limpia y con comunicación durante el proceso.', icon: '🛠️' },
+    ],
+    benefits: ['📋 Presupuesto claro', '🛠️ Trabajo cuidado', '⏱️ Respuesta rápida'],
+    process: [
+      { title: 'Consulta', text: 'Explícanos qué necesitas resolver.' },
+      { title: 'Valoración', text: 'Revisamos detalles, zona y alcance.' },
+      { title: 'Trabajo', text: 'Realizamos el servicio con cuidado.' },
+      { title: 'Entrega', text: 'Confirmamos que todo quede correcto.' },
+    ],
+    faqs: [
+      { q: '¿Hacen presupuesto sin compromiso?', a: 'Sí. Primero se revisa el trabajo y después se comparte una propuesta clara.' },
+      { q: '¿Trabajan en mi zona?', a: 'Consulta la ubicación indicada o escribe por WhatsApp para confirmar disponibilidad.' },
+      { q: '¿Cuánto tarda el servicio?', a: 'Depende del tipo de trabajo. Se informa el plazo antes de comenzar.' },
+      { q: '¿Puedo enviar fotos por WhatsApp?', a: 'Sí. Enviar fotos ayuda a valorar mejor el servicio.' },
+    ],
+  },
+  salud: {
+    emoji: '🧘', category: 'salud',
+    colors: { primary: '#1f4d4a', secondary: '#4f8c83', accent: '#c6d8b8', cream: '#f2faf7', ink: '#13211f' },
+    heroImage: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1800&q=88&fit=crop&auto=format',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1591343395082-e120087004b4?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=1200&q=88&fit=crop&auto=format',
+    ],
+    services: [
+      { name: 'Primera consulta', desc: 'Un primer contacto para entender tu necesidad y orientarte correctamente.', icon: '🧘' },
+      { name: 'Plan personalizado', desc: 'Una propuesta adaptada a tu objetivo, ritmo y disponibilidad.', icon: '📋' },
+      { name: 'Seguimiento', desc: 'Acompañamiento claro para avanzar con seguridad.', icon: '🤝' },
+    ],
+    benefits: ['🤝 Trato cercano', '📋 Orientación clara', '🌿 Atención personalizada'],
+    process: [
+      { title: 'Consulta', text: 'Cuéntanos tu situación y objetivo.' },
+      { title: 'Valoración', text: 'Revisamos la mejor forma de ayudarte.' },
+      { title: 'Plan', text: 'Definimos el acompañamiento adecuado.' },
+      { title: 'Seguimiento', text: 'Avanzamos paso a paso.' },
+    ],
+    faqs: [
+      { q: '¿Puedo pedir información antes de reservar?', a: 'Sí. Puedes escribir por WhatsApp para recibir orientación inicial.' },
+      { q: '¿La atención es personalizada?', a: 'Sí. La propuesta se adapta a cada persona y necesidad.' },
+      { q: '¿Dónde se realiza el servicio?', a: 'Consulta la ubicación indicada en la web o pregunta por disponibilidad.' },
+      { q: '¿Cómo confirmo una cita?', a: 'Puedes confirmarla directamente por WhatsApp.' },
+    ],
+  },
+  creativo: {
+    emoji: '🎨', category: 'creativo',
+    colors: { primary: '#251a3a', secondary: '#5d4b9a', accent: '#f0b45b', cream: '#faf7ff', ink: '#17121f' },
+    heroImage: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1800&q=88&fit=crop&auto=format',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=1200&q=88&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=88&fit=crop&auto=format',
+    ],
+    services: [
+      { name: 'Consulta inicial', desc: 'Revisión de la idea, objetivo y necesidad principal.', icon: '💡' },
+      { name: 'Propuesta personalizada', desc: 'Plan claro con alcance, entregables y próximos pasos.', icon: '📌' },
+      { name: 'Ejecución profesional', desc: 'Trabajo cuidado, comunicación y entrega final.', icon: '🚀' },
+    ],
+    benefits: ['💡 Ideas claras', '📌 Propuesta ordenada', '🚀 Entrega profesional'],
+    process: [
+      { title: 'Idea', text: 'Entendemos tu objetivo.' },
+      { title: 'Propuesta', text: 'Definimos solución y alcance.' },
+      { title: 'Trabajo', text: 'Creamos o ejecutamos el proyecto.' },
+      { title: 'Entrega', text: 'Revisamos detalles finales.' },
+    ],
+    faqs: [
+      { q: '¿Puedo explicar mi idea por WhatsApp?', a: 'Sí. Puedes escribir y enviar referencias o detalles.' },
+      { q: '¿Hacen propuestas personalizadas?', a: 'Sí. Cada proyecto se adapta al objetivo y presupuesto.' },
+      { q: '¿Cuánto tarda?', a: 'Depende del alcance. Se confirma plazo antes de comenzar.' },
+      { q: '¿Puedo pedir cambios?', a: 'Sí, se acuerda el proceso de revisión antes de empezar.' },
+    ],
+  },
+}
+
+function presetForTrade(normalized: string): AutoPreset {
+  if (/(chef|cocina|catering|restaurante|bar|panader|pasteler|comida|gastronom|repost|pizzeria|cafeter)/.test(normalized)) return AUTO_PRESETS.gastronomia
+  if (/(peluquer|barber|belleza|estetic|unas|maquill|spa|masaje|cosmet|cejas|lashes|tattoo|tatu)/.test(normalized)) return AUTO_PRESETS.belleza
+  if (/(reforma|obra|constru|electric|fontaner|pintor|carpinter|cerrajer|limpieza|mudanza|jardin|piscina|climat|aire|mantenimiento|hogar|albanil)/.test(normalized)) return AUTO_PRESETS.hogar
+  if (/(fisio|nutri|psicolog|coach|entrenador|yoga|pilates|salud|terapia|clinica|dental|medic)/.test(normalized)) return AUTO_PRESETS.salud
+  return AUTO_PRESETS.creativo
+}
+
+function buildAutoTradeConfig(tradeId: string): TradeConfig {
+  const normalized = normalizeTradeId(tradeId)
+  const preset = presetForTrade(normalized)
+  const name = titleFromTradeId(normalized)
+  return {
+    id: normalized,
+    name,
+    emoji: preset.emoji,
+    category: preset.category,
+    colors: preset.colors,
+    heroImage: preset.heroImage,
+    galleryImages: preset.galleryImages,
+    defaultHeadline: name,
+    defaultSubtitle: 'con atención profesional',
+    defaultIntro: `Servicio profesional de ${name.toLowerCase()} con atención clara, trato directo y una propuesta pensada para que puedas decidir con confianza.`,
+    defaultServices: preset.services,
+    defaultBenefits: preset.benefits,
+    defaultProcess: preset.process,
+    defaultTestimonials: [
+      { name: 'Cliente verificado', role: 'Cliente', text: 'Atención rápida, comunicación clara y muy buen servicio.' },
+      { name: 'Cliente satisfecho', role: 'Cliente', text: 'Todo fue sencillo desde el primer contacto. Muy recomendable.' },
+      { name: 'Cliente habitual', role: 'Cliente', text: 'Profesionalidad, buen trato y resultado cuidado.' },
+    ],
+    defaultFaqs: preset.faqs,
+  }
+}
+
 export function getTradeConfig(tradeId: string): TradeConfig {
   const normalized = normalizeTradeId(tradeId)
-  return TRADES[normalized] || TRADES.emprendedor
+  return TRADES[normalized] || buildAutoTradeConfig(normalized)
 }
