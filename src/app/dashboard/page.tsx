@@ -137,7 +137,7 @@ export default function Dashboard() {
       <main className={styles.main}>
         <div className={styles.ph}>
           <div>
-            <h1 className={styles.phTitle}>Buenos días, {sessionName} 👋</h1>
+            <h1 className={styles.phTitle}>Bienvenido, {sessionName} 👋</h1>
             <p className={styles.phSub}>
               {businessName} · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
