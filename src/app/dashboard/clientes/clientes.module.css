@@ -8,7 +8,18 @@
   overflow: hidden;
   margin-bottom: 1.1rem;
 }
+.ccGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.2rem;
+  align-items: stretch;
+}
 
+.cc {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 .ps {
   padding: .8rem .9rem;
   border-right: 1px solid var(--bg2);

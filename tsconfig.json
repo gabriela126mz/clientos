@@ -13,15 +13,21 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+
     "plugins": [
       {
         "name": "next"
       }
     ],
+
+    // 👇 AQUÍ VA TODO LO DE PATHS (UN SOLO BLOQUE)
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["src/*"],
+      "@/ui/*": ["src/components/ui/*"]
     }
   },
+
   "include": [
     "next-env.d.ts",
     "**/*.ts",
@@ -30,5 +36,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
+
   "exclude": ["node_modules"]
 }

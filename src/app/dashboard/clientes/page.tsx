@@ -344,7 +344,15 @@ export default function ClientesPage() {
 
         {/* CARDS */}
         {view === 'cards' && list.length > 0 && (
-          <div className={c.ccGrid}>
+          <div
+  className={c.ccGrid}
+  style={{
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: '1.2rem',
+    alignItems: 'stretch',
+  }}
+>
             {list.map(cl => (
               <div key={cl.id} className={c.cc} onClick={() => router.push(`/dashboard/clientes/${cl.id}`)}>
                 <div className={c.ccStripe} style={{ background: ESTADO_STRIPE[cl.estado] }} />

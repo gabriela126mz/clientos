@@ -1,5 +1,5 @@
 'use client'
-
+import { AppInput } from '@/components/ui/AppInput'
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Sidebar } from '../page'
@@ -643,16 +643,25 @@ function AgendaContent() {
                   />
                 </div>
 
-                <div className={aStyles.field}>
-                  <label>Hora</label>
-                  <input type="time" value={formTime} onChange={e => setFormTime(e.target.value)} />
-                </div>
+          <div className={aStyles.field}>
+            <label>Hora</label>
+            <AppInput
+              name="formTime"
+              type="time"
+              value={formTime}
+              onChange={(v) => setFormTime(v)}
+            />
+          </div>
 
-                <div className={aStyles.field}>
-                  <label>Lugar</label>
-                  <input value={formPlace} onChange={e => setFormPlace(e.target.value)} placeholder="Ej: En casa del cliente" />
-                </div>
-
+          <div className={aStyles.field}>
+            <label>Lugar</label>
+            <AppInput
+              name="formPlace"
+              value={formPlace}
+              onChange={(v) => setFormPlace(v)}
+              placeholder="Ej: En casa del cliente"
+            />
+          </div>
                 <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>Notas</label>
                   <textarea
