@@ -1,16 +1,19 @@
 export interface Client {
-  id: string
+    id: string
   user_id: string
   name: string
   phone?: string
   email?: string
   address?: string
   local?: string
-  estado: 'nuevo' | 'contactado' | 'cita' | 'completado' 
+  cif?: string
+  cp?: string
+  ciudad?: string
+  estado: 'nuevo' | 'contactado' | 'cita' | 'completado'
   tags?: string
   notes?: string
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 export interface Cita {
@@ -292,4 +295,40 @@ export const OFICIOS: OficioConfig[] = [
 
 export function getOficioConfig(oficioId: string): OficioConfig {
   return OFICIOS.find(o => o.id === oficioId) || OFICIOS[0]
+}
+
+
+export interface Presupuesto {
+  id: string
+  user_id: string
+  client_id: string
+  numero: string
+  fecha: string
+  total: number
+  estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado'
+  created_at: string
+}
+
+export interface Cita {
+  id: string
+  user_id: string
+  client_id: string
+  title: string
+  date: string
+  time: string
+  place?: string
+  notes?: string
+  estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada'
+  created_at: string
+}
+
+export interface ClientDocument {
+  id: string
+  client_id: string
+  user_id: string
+  nombre: string
+  tipo: string
+  url: string
+  fecha: string
+  created_at: string
 }
