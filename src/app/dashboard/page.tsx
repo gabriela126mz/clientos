@@ -146,7 +146,7 @@ export default function Dashboard() {
           <div className={styles.phActions}>
             <Link href="/dashboard/clientes" className={styles.btnGhost}>+ Cliente</Link>
             <Link href="/dashboard/presupuestos" className={styles.btnGhost}>+ Presupuesto</Link>
-            <Link href="/dashboard/agenda" className={styles.btnGold}>+ Visita</Link>
+            <Link href="/dashboard/agenda" className={styles.btnGold}>+ Agenda</Link>
           </div>
         </div>
 
