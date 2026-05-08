@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className={styles.authSide}>
         <div className={styles.authSideInner}>
           <div className={styles.brand}>
-            Clientos <span className={styles.brandDot}></span>
+            Emprenix <span className={styles.brandDot}></span>
           </div>
           <div className={styles.tagline}>
             Menos papel.<br />Más <em>clientes</em>.

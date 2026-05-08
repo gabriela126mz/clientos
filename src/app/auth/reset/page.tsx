@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
       <section className={styles.authSide}>
         <div>
           <div className={styles.brand}>
-            Clientos <span className={styles.brandDot}></span>
+            Emprenix <span className={styles.brandDot}></span>
           </div>
 
           <h1 className={styles.tagline}>

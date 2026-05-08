@@ -430,7 +430,7 @@ export default function LandingPublica() {
             <div className="foot-col"><h4>Contacto</h4><a href={data.wa} target="_blank" rel="noopener noreferrer">{data.phone}</a><a href={`mailto:${data.email}`}>{data.email}</a><p>{data.address ? `${data.address}, ` : ''}{data.city}</p></div>
             <div className="foot-col"><h4>Redes</h4>{data.instagram ? <a href={data.instagram} target="_blank" rel="noopener noreferrer">Instagram</a> : <p>Instagram disponible próximamente</p>}{data.tiktok ? <a href={data.tiktok} target="_blank" rel="noopener noreferrer">TikTok</a> : <p>TikTok disponible próximamente</p>}<a href={data.wa} target="_blank" rel="noopener noreferrer">WhatsApp directo</a></div>
           </div>
-          <div className="foot-bottom"><span>© {new Date().getFullYear()} {data.businessName}. Servicio profesional en {data.city}.</span><span className="powered">Creado con <strong>Clientos</strong></span></div>
+          <div className="foot-bottom"><span>© {new Date().getFullYear()} {data.businessName}. Servicio profesional en {data.city}.</span><span className="powered">Creado con <strong>Emprenix</strong></span></div>
         </div>
       </footer>
 

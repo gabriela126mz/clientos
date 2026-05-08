@@ -33,7 +33,7 @@ export function Sidebar({ active }: { active: string }) {
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.brand}>Clientos <span className={styles.brandDot}></span></div>
+      <div className={styles.brand}>Emprenix <span className={styles.brandDot}></span></div>
 
       <nav style={{ flex: 1 }}>
         {NAV.map(item => {

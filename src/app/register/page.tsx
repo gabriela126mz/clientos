@@ -61,7 +61,7 @@ export default function RegisterPage() {
       <section className={styles.authSide}>
         <div>
           <div className={styles.brand}>
-            Clientos <span className={styles.brandDot}></span>
+            Emprenix <span className={styles.brandDot}></span>
           </div>
 
           <h1 className={styles.tagline}>
@@ -70,7 +70,7 @@ export default function RegisterPage() {
           </h1>
 
           <p className={styles.taglineSub}>
-            Entra a Clientos y empieza a gestionar clientes, agenda, presupuestos, facturas y tu landing.
+            Entra a Emprenix y empieza a gestionar clientes, agenda, presupuestos, facturas y tu landing.
           </p>
         </div>
 
