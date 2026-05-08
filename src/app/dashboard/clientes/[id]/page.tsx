@@ -207,14 +207,19 @@ export default function ClienteDetalle() {
 
       setPresupuestos(presupuestosData || [])
 
-      const { data: citasData } = await supabase
+      const { data: citasData, error: citasError } = await supabase
         .from('citas')
         .select('*')
         .eq('client_id', clientId)
         .eq('user_id', user.id)
         .order('date', { ascending: false })
 
-      setCitas(citasData || [])
+      if (citasError) {
+        console.error('Error cargando citas:', citasError)
+      } else {
+        console.log('✅ Citas cargadas:', citasData)
+        setCitas(citasData || [])
+      }
 
       const { data: documentosData } = await supabase
         .from('client_documents')
@@ -300,27 +305,167 @@ export default function ClienteDetalle() {
 
   const descargarPDF = async (presupuesto: Presupuesto, type: 'presupuesto' | 'factura') => {
     try {
+      // ✅ TRAER DETALLES COMPLETOS DEL PRESUPUESTO
+      const { data: presupuestoCompleto } = await supabase
+        .from('presupuestos')
+        .select('*')
+        .eq('id', presupuesto.id)
+        .single()
+
+      if (!presupuestoCompleto) {
+        alert('❌ No se pudo cargar el presupuesto')
+        return
+      }
+
       const { jsPDF } = await import('jspdf')
       const doc = new jsPDF('p', 'mm', 'a4')
       const titulo = type === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'
 
-      doc.setFontSize(24)
+      // TÍTULO
+      doc.setFontSize(28)
       doc.setFont(undefined, 'bold')
       doc.text(titulo, 105, 20, { align: 'center' })
 
+      // NÚMERO Y FECHA
       doc.setFontSize(10)
       doc.setFont(undefined, 'normal')
-      doc.text(`Número: ${presupuesto.numero}`, 20, 35)
-      doc.text(`Fecha: ${new Date(presupuesto.fecha).toLocaleDateString('es-ES')}`, 120, 35)
+      doc.text(`Número: ${presupuestoCompleto.numero}`, 20, 35)
+      doc.text(`Fecha: ${new Date(presupuestoCompleto.fecha).toLocaleDateString('es-ES')}`, 120, 35)
 
+      // EMISOR Y CLIENTE EN LÍNEA
       doc.setFont(undefined, 'bold')
-      doc.text(`TOTAL: ${presupuesto.total.toFixed(2)}€`, 20, 50)
+      doc.setFontSize(10)
+      doc.text('EMISOR:', 20, 50)
+      doc.text('CLIENTE:', 120, 50)
 
       doc.setFont(undefined, 'normal')
-      doc.text(`Cliente: ${cliente?.name}`, 20, 60)
-      doc.text(`Estado: ${presupuesto.estado}`, 20, 70)
+      doc.setFontSize(9)
+      let yPos = 57
 
-      doc.save(`${type}-${presupuesto.numero}.pdf`)
+      // DATOS EMISOR (placeholder, ya que no tenemos perfil en esta página)
+      doc.text('Mi Empresa', 20, yPos)
+      doc.text(`${presupuestoCompleto.client_name}`, 120, yPos)
+      yPos += 5
+
+      doc.text('Propietario', 20, yPos)
+      doc.text(`CIF: ${presupuestoCompleto.cliente_cif || '—'}`, 120, yPos)
+      yPos += 5
+
+      doc.text('CIF: 12345678X', 20, yPos)
+      doc.text(`CP: ${presupuestoCompleto.cliente_cp || '—'}`, 120, yPos)
+      yPos += 5
+
+      doc.text('Email: info@empresa.com', 20, yPos)
+      doc.text(`Email: ${presupuestoCompleto.cliente_email || '—'}`, 120, yPos)
+      yPos += 5
+
+      doc.text('Tel: 123456789', 20, yPos)
+      doc.text(`Tel: ${presupuestoCompleto.cliente_telefono || '—'}`, 120, yPos)
+      yPos += 5
+
+      doc.text('Dir: Calle Principal, 123', 20, yPos)
+      doc.text(`Dir: ${presupuestoCompleto.cliente_direccion || '—'}`, 120, yPos)
+      yPos += 5
+
+      doc.text('28000 Madrid', 20, yPos)
+      doc.text(`${presupuestoCompleto.cliente_ciudad || '—'}`, 120, yPos)
+
+      // TABLA
+      yPos = 100
+      doc.setFont(undefined, 'bold')
+      doc.setFontSize(9)
+      doc.setFillColor(240, 240, 240)
+      doc.rect(15, yPos - 5, 180, 7, 'F')
+      doc.text('CONCEPTO', 18, yPos)
+      doc.text('DESCRIPCIÓN', 50, yPos)
+      doc.text('CANTIDAD', 105, yPos)
+      doc.text('PRECIO', 130, yPos)
+      doc.text('IVA', 150, yPos)
+      doc.text('TOTAL', 170, yPos)
+
+      yPos += 10
+      doc.setFont(undefined, 'normal')
+      doc.setFontSize(8)
+
+      // ✅ ITEMS DEL PRESUPUESTO
+      const items = Array.isArray(presupuestoCompleto.items) ? presupuestoCompleto.items : []
+      
+      items.forEach((item: any) => {
+        if (yPos > 270) {
+          doc.addPage()
+          yPos = 20
+        }
+
+        const cant = Number(item.cantidad) || 0
+        const prec = Number(item.precio) || 0
+        const subtotal = cant * prec
+        const desc = Number(item.descuento) || 0
+        const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
+        const base = subtotal - descuentoLinea
+        const iv = Number(item.iva) || 0
+        const iva = (base * iv) / 100
+        const total = base + iva
+
+        doc.text(item.concepto?.substring(0, 18) || '', 18, yPos)
+        doc.text(item.descripcion?.substring(0, 18) || '', 50, yPos)
+        doc.text(String(cant), 105, yPos, { align: 'center' })
+        doc.text(`${prec.toFixed(2)}€`, 130, yPos, { align: 'right' })
+        doc.text(`${iv}%`, 150, yPos, { align: 'center' })
+        doc.text(`${total.toFixed(2)}€`, 170, yPos, { align: 'right' })
+        yPos += 7
+      })
+
+      // TOTALES
+      yPos += 10
+      const itemsTotal = items.reduce((acc: number, item: any) => {
+        const cant = Number(item.cantidad) || 0
+        const prec = Number(item.precio) || 0
+        const subtotal = cant * prec
+        const desc = Number(item.descuento) || 0
+        const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
+        const base = subtotal - descuentoLinea
+        const iv = Number(item.iva) || 0
+        const iva = (base * iv) / 100
+        return acc + base + iva
+      }, 0)
+
+      const totalBase = items.reduce((acc: number, item: any) => {
+        const cant = Number(item.cantidad) || 0
+        const prec = Number(item.precio) || 0
+        const subtotal = cant * prec
+        const desc = Number(item.descuento) || 0
+        const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
+        return acc + (subtotal - descuentoLinea)
+      }, 0)
+
+      const totalIVA = itemsTotal - totalBase
+
+      doc.setFont(undefined, 'bold')
+      doc.setFontSize(10)
+      doc.text(`BASE: ${totalBase.toFixed(2)}€`, 130, yPos, { align: 'right' })
+      yPos += 7
+      doc.text(`IVA 21%: ${totalIVA.toFixed(2)}€`, 130, yPos, { align: 'right' })
+      yPos += 10
+      doc.setFontSize(12)
+      doc.setFillColor(255, 255, 255)
+      doc.rect(120, yPos - 6, 60, 10, 'S')
+      doc.text(`TOTAL: ${itemsTotal.toFixed(2)}€`, 150, yPos, { align: 'right' })
+
+      yPos += 18
+      doc.setFont(undefined, 'normal')
+      doc.setFontSize(9)
+      doc.text(`Método: ${presupuestoCompleto.metodo_pago?.toUpperCase() || 'N/A'}`, 20, yPos)
+
+      if (presupuestoCompleto.notas) {
+        yPos += 10
+        doc.text('Observaciones:', 20, yPos)
+        yPos += 5
+        doc.setFontSize(8)
+        const notasLines = doc.splitTextToSize(presupuestoCompleto.notas, 170)
+        doc.text(notasLines, 20, yPos)
+      }
+
+      doc.save(`${type}-${presupuestoCompleto.numero}.pdf`)
       alert('✅ PDF descargado')
     } catch (err) {
       console.error('Error:', err)
