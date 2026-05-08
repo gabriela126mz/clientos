@@ -5,14 +5,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context'
-import { getDashboardStats, getUpcomingCitas } from '@/lib/db'
-import type { Cita, DashboardStats } from '@/lib/types'
+import type { Cita } from '@/lib/types'
 import styles from './page.module.css'
 
 const NAV = [
   { href: '/dashboard', label: 'Panel', section: 'General', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
   { href: '/dashboard/clientes', label: 'Clientes', section: 'Negocio', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-1a5 5 0 015-5h2a5 5 0 015 5v1"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-1a4 4 0 00-3-3.85"/></svg> },
   { href: '/dashboard/agenda', label: 'Agenda', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+  { href: '/dashboard/presupuestos', label: 'Presupuestos', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/></svg> },
   { href: '/dashboard/documentos', label: 'Documentos', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/></svg> },
   { href: '/dashboard/mi-negocio', label: 'Mi negocio', section: 'Mi web', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg> },
   { href: '/dashboard/qr', label: 'QR y landing', section: '', icon: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
@@ -79,9 +79,27 @@ export function Sidebar({ active }: { active: string }) {
   )
 }
 
+interface DashboardStats {
+  totalClientes: number
+  citasEstaSemana: number
+  cobradoEsteMes: number
+  porCobrar: number
+  presupuestosAbiertos: number
+}
+
+interface Presupuesto {
+  id: string
+  numero: string
+  fecha: string
+  total: number
+  estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado'
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
+  const supabase = createClient()
+
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [citas, setCitas] = useState<Cita[]>([])
 
@@ -96,29 +114,112 @@ export default function Dashboard() {
     (user?.user_metadata?.nombre_negocio as string | undefined) ||
     'Mi negocio'
 
-  useEffect(() => {
-    if (loading) return
-    if (!user) {
-      router.push('/')
-      return
-    }
+  // ✅ SALUDO DINÁMICO SEGÚN LA HORA
+  const getGreeting = (): string => {
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 12) return 'Buenos días'
+    if (hour >= 12 && hour < 17) return 'Buenas tardes'
+    return 'Buenas noches'
+  }
 
-    const load = async () => {
+  // ✅ CARGAR STATS CORRECTAMENTE
+  useEffect(() => {
+    if (loading || !user) return
+
+    const loadStats = async () => {
       try {
-        const [statsData, citasResult] = await Promise.all([
-          getDashboardStats(user.id),
-          getUpcomingCitas(user.id, 4),
-        ])
-        setStats(statsData)
-        if (citasResult.data) setCitas(citasResult.data)
+        // Clientes totales
+        const { data: clientesData } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('user_id', user.id)
+
+        // Citas esta semana
+        const today = new Date()
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - today.getDay() + 1)
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6)
+
+        const { data: citasData } = await supabase
+          .from('citas')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('date', weekStart.toISOString().split('T')[0])
+          .lte('date', weekEnd.toISOString().split('T')[0])
+          .order('date', { ascending: true })
+
+        // Presupuestos ACEPTADOS (para "Cobrado este mes")
+        const { data: presupuestosAceptados } = await supabase
+          .from('presupuestos')
+          .select('total, fecha')
+          .eq('user_id', user.id)
+          .eq('estado', 'aceptado')
+
+        // Presupuestos ENVIADOS (para "Por cobrar")
+        const { data: presupuestosEnviados } = await supabase
+          .from('presupuestos')
+          .select('total')
+          .eq('user_id', user.id)
+          .eq('estado', 'enviado')
+
+        // Próximas 4 citas
+        const { data: proximasCitasData } = await supabase
+          .from('citas')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('date', new Date().toISOString().split('T')[0])
+          .order('date', { ascending: true })
+          .limit(4)
+
+        // CÁLCULOS:
+        // 1. Total clientes
+        const totalClientes = clientesData?.length || 0
+
+        // 2. Citas esta semana
+        const citasEstaSemana = citasData?.length || 0
+
+        // 3. Cobrado ESTE MES (presupuestos ACEPTADOS del mes actual)
+        const thisMonth = new Date().getMonth() + 1
+        const thisYear = new Date().getFullYear()
+        const cobradoEsteMes = (presupuestosAceptados || []).reduce((acc, p) => {
+          const [y, m] = p.fecha.split('-')
+          if (Number(y) === thisYear && Number(m) === thisMonth) {
+            return acc + (Number(p.total) || 0)
+          }
+          return acc
+        }, 0)
+
+        // 4. Por cobrar (TODOS los presupuestos ENVIADOS)
+        const porCobrar = (presupuestosEnviados || []).reduce((acc, p) => acc + (Number(p.total) || 0), 0)
+
+        // 5. Presupuestos abiertos (NO aceptados ni rechazados)
+        const { data: presupuestosAbiertoData } = await supabase
+          .from('presupuestos')
+          .select('id')
+          .eq('user_id', user.id)
+          .or('estado.eq.borrador,estado.eq.enviado')
+
+        const presupuestosAbiertos = presupuestosAbiertoData?.length || 0
+
+        setStats({
+          totalClientes,
+          citasEstaSemana,
+          cobradoEsteMes,
+          porCobrar,
+          presupuestosAbiertos,
+        })
+
+        setCitas(proximasCitasData || [])
       } catch (err) {
-        console.error('Error cargando dashboard:', err)
+        console.error('Error cargando stats:', err)
       }
     }
 
-    load()
-  }, [user, loading, router])
+    loadStats()
+  }, [user, loading, supabase])
 
+  // Fechas para el calendario
   const today = new Date()
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const monthsFull = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -130,6 +231,25 @@ export default function Dashboard() {
 
   const eventDays = new Set(citas.map(c => new Date(c.date + 'T00:00:00').getDate()))
 
+  // ✅ CLICK EN DÍA DEL CALENDARIO → AGENDA
+  const handleCalendarDayClick = (day: number) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    router.push(`/dashboard/agenda?date=${dateStr}`)
+  }
+
+  if (loading) {
+    return (
+      <div className={styles.app}>
+        <Sidebar active="/dashboard" />
+        <main className={styles.main}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#64748b' }}>
+            Cargando...
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.app}>
       <Sidebar active="/dashboard" />
@@ -137,7 +257,7 @@ export default function Dashboard() {
       <main className={styles.main}>
         <div className={styles.ph}>
           <div>
-            <h1 className={styles.phTitle}>Hola, {sessionName} 👋</h1>
+            <h1 className={styles.phTitle}>{getGreeting()}, {sessionName} 👋</h1>
             <p className={styles.phSub}>
               {businessName} · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
@@ -150,33 +270,32 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ✅ STATS RECALCULADOS */}
         <div className={styles.stats}>
           {[
             {
               label: 'Clientes',
-              value: stats ? String(stats.clientes.total) : '—',
-              sub: stats ? `${stats.clientes.nuevosEstaSemana} nuevos esta semana` : 'Cargando...',
+              value: stats ? String(stats.totalClientes) : '—',
+              sub: 'Total en tu cartera',
               color: 'gold',
             },
             {
               label: 'Cobrado este mes',
-              value: stats ? `${stats.facturas.cobrado.toLocaleString('es-ES')}€` : '—',
-              sub: stats ? `${stats.facturas.count} facturas` : 'Cargando...',
+              value: stats ? `${stats.cobradoEsteMes.toLocaleString('es-ES')}€` : '—',
+              sub: 'De presupuestos aceptados',
               color: 'green',
             },
             {
               label: 'Por cobrar',
-              value: stats ? `${stats.facturas.porCobrar.toLocaleString('es-ES')}€` : '—',
-              sub: stats
-                ? stats.presupuestos.abiertos > 0
-                  ? `${stats.presupuestos.abiertos.toLocaleString('es-ES')}€ en presupuestos`
-                  : 'Sin presupuestos abiertos'
-                : 'Cargando...',
+              value: stats ? `${stats.porCobrar.toLocaleString('es-ES')}€` : '—',
+              sub: stats && stats.presupuestosAbiertos > 0
+                ? `${stats.presupuestosAbiertos} presupuestos en espera`
+                : 'Sin presupuestos abiertos',
               color: 'blue',
             },
             {
               label: 'Visitas esta semana',
-              value: stats ? String(stats.citas.estaSemana) : '—',
+              value: stats ? String(stats.citasEstaSemana) : '—',
               sub: citas.length > 0
                 ? `Próxima: ${citas[0].date} ${citas[0].time}`
                 : 'Sin visitas próximas',
@@ -224,6 +343,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* ✅ CALENDARIO CLICKEABLE */}
           <div className={styles.card}>
             <div className={styles.cardH}>
               <div className={styles.cardT}>{monthsFull[month]} {year}</div>
@@ -242,7 +362,14 @@ export default function Dashboard() {
                 const hasEvent = eventDays.has(d)
 
                 return (
-                  <div key={d} className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}>
+                  <div 
+                    key={d} 
+                    className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}
+                    onClick={() => handleCalendarDayClick(d)}
+                    style={{ cursor: 'pointer', transition: 'all 0.2s', borderRadius: '6px' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f0ea')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                  >
                     {d}
                     {hasEvent && <span className={styles.calDot} />}
                   </div>
