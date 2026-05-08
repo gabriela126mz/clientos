@@ -49,6 +49,79 @@ const ESTADO_STRIPE: Record<string,string> = { nuevo:'#2563eb', contactado:'#ea5
 const ESTADO_BG: Record<string,string> = { nuevo:'#dbeafe', contactado:'#ffedd5', cita:'#fdf3d6', completado:'#dcfce7' }
 const ESTADO_COLOR: Record<string,string> = { nuevo:'#1d4ed8', contactado:'#c2410c', cita:'#92400e', completado:'#166534' }
 
+// ✅ VALIDACIONES EN TIEMPO REAL
+const validateCIF = (cif: string): { valid: boolean; message: string } => {
+  if (!cif.trim()) return { valid: true, message: '' }
+  if (cif.length !== 9) return { valid: false, message: 'CIF debe tener 9 caracteres' }
+  const cifRegex = /^[A-Z]{1}[0-9]{7}[0-9A-Z]{1}$/
+  return cifRegex.test(cif.toUpperCase())
+    ? { valid: true, message: '✅ CIF válido' }
+    : { valid: false, message: 'Formato: L0000000X' }
+}
+
+const validateCP = (cp: string): { valid: boolean; message: string } => {
+  if (!cp.trim()) return { valid: true, message: '' }
+  if (cp.length !== 5) return { valid: false, message: 'CP debe tener 5 dígitos' }
+  const cpRegex = /^[0-9]{5}$/
+  return cpRegex.test(cp)
+    ? { valid: true, message: '✅ CP válido' }
+    : { valid: false, message: 'Solo números, 5 dígitos' }
+}
+
+const validatePhone = (phone: string): { valid: boolean; message: string } => {
+  if (!phone.trim()) return { valid: true, message: '' }
+  const phoneRegex = /^[\d\s+\-()]{9,}$/
+  return phoneRegex.test(phone)
+    ? { valid: true, message: '✅ Teléfono válido' }
+    : { valid: false, message: 'Mínimo 9 dígitos' }
+}
+
+const validateEmail = (email: string): { valid: boolean; message: string } => {
+  if (!email.trim()) return { valid: true, message: '' }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+    ? { valid: true, message: '✅ Email válido' }
+    : { valid: false, message: 'Email inválido' }
+}
+
+const validateName = (name: string): { valid: boolean; message: string } => {
+  if (!name.trim()) return { valid: false, message: 'Nombre requerido' }
+  if (name.length > 100) return { valid: false, message: 'Máximo 100 caracteres' }
+  return { valid: true, message: '' }
+}
+
+const sanitizeInput = (input: string): string => {
+  return input.replace(/[<>]/g, '')
+}
+
+const STORAGE_EDIT = 'cliente_detalle_edit'
+
+const saveEditToStorage = (data: any) => {
+  try {
+    localStorage.setItem(STORAGE_EDIT, JSON.stringify(data))
+  } catch (e) {
+    console.error('localStorage:', e)
+  }
+}
+
+const loadEditFromStorage = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_EDIT)
+    return stored ? JSON.parse(stored) : null
+  } catch (e) {
+    console.error('localStorage:', e)
+    return null
+  }
+}
+
+const clearEditFromStorage = () => {
+  try {
+    localStorage.removeItem(STORAGE_EDIT)
+  } catch (e) {
+    console.error('localStorage:', e)
+  }
+}
+
 export default function ClienteDetalle() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -62,14 +135,36 @@ export default function ClienteDetalle() {
   const [citas, setCitas] = useState<Cita[]>([])
   const [documentos, setDocumentos] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
-  const [showDocModal, setShowDocModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [docFile, setDocFile] = useState<File | null>(null)
-  const [docNombre, setDocNombre] = useState('')
-  const [uploadingDoc, setUploadingDoc] = useState(false)
-  const [docError, setDocError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({ name:'', phone:'', email:'', address:'', local:'', cif:'', cp:'', ciudad:'', estado:'nuevo', tags:'', notes:'' })
+  
+  const [validation, setValidation] = useState({
+    name: { valid: true, message: '' },
+    phone: { valid: true, message: '' },
+    email: { valid: true, message: '' },
+    cif: { valid: true, message: '' },
+    cp: { valid: true, message: '' }
+  })
+
+  // ✅ VALIDAR MIENTRAS ESCRIBE
+  useEffect(() => {
+    setValidation({
+      name: validateName(form.name),
+      phone: validatePhone(form.phone),
+      email: validateEmail(form.email),
+      cif: validateCIF(form.cif),
+      cp: validateCP(form.cp)
+    })
+  }, [form.name, form.phone, form.email, form.cif, form.cp])
+
+  // ✅ GUARDAR EN LOCALSTORAGE AUTOMÁTICAMENTE
+  useEffect(() => {
+    if (showEditModal) {
+      saveEditToStorage(form)
+    }
+  }, [form, showEditModal])
 
   const loadCliente = useCallback(async () => {
     if (!user || !clientId) return
@@ -105,7 +200,7 @@ export default function ClienteDetalle() {
 
       const { data: presupuestosData } = await supabase
         .from('presupuestos')
-        .select('id, numero, fecha, total, estado')
+        .select('*')
         .eq('client_id', clientId)
         .eq('user_id', user.id)
         .order('fecha', { ascending: false })
@@ -114,7 +209,7 @@ export default function ClienteDetalle() {
 
       const { data: citasData } = await supabase
         .from('citas')
-        .select('id, title, date, time, place, notes, estado')
+        .select('*')
         .eq('client_id', clientId)
         .eq('user_id', user.id)
         .order('date', { ascending: false })
@@ -145,110 +240,91 @@ export default function ClienteDetalle() {
     loadCliente()
   }, [authLoading, user, loadCliente, router])
 
-  const uploadDocumento = async () => {
-    if (!docFile || !docNombre.trim() || !user) {
-      setDocError('Selecciona archivo y escribe nombre')
-      return
+  const openEdit = () => {
+    const stored = loadEditFromStorage()
+    if (stored) {
+      setForm(stored)
     }
-
-    const maxSize = 50 * 1024 * 1024
-    if (docFile.size > maxSize) {
-      setDocError('Archivo muy grande. Máximo 50MB')
-      return
-    }
-
-    setUploadingDoc(true)
-    setDocError('')
-
-    try {
-      const fileExt = docFile.name.split('.').pop()?.toLowerCase()
-      const allowedExt = ['pdf', 'doc', 'docx', 'xls', 'xlsx']
-      
-      if (!fileExt || !allowedExt.includes(fileExt)) {
-        setDocError('Formato no permitido. Solo PDF, Word, Excel')
-        setUploadingDoc(false)
-        return
-      }
-
-      const fileName = `${user.id}/${clientId}/${Date.now()}_${docFile.name}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('client_docs')
-        .upload(fileName, docFile)
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('client_docs')
-        .getPublicUrl(fileName)
-
-      const { error: insertError } = await supabase
-        .from('client_documents')
-        .insert([{
-          client_id: clientId,
-          user_id: user.id,
-          nombre: docNombre.trim(),
-          tipo: fileExt?.toUpperCase() || 'FILE',
-          url: publicUrl,
-          fecha: new Date().toISOString().split('T')[0],
-          size: docFile.size
-        }])
-
-      if (insertError) throw insertError
-
-      setDocFile(null)
-      setDocNombre('')
-      setShowDocModal(false)
-      await loadCliente()
-      alert('📄 Documento subido ✅')
-    } catch (err) {
-      console.error('Error subiendo documento:', err)
-      setDocError('Error al subir documento. Intenta de nuevo.')
-    } finally {
-      setUploadingDoc(false)
-    }
+    setShowEditModal(true)
   }
 
-  const deleteDocumento = async (docId: string) => {
-    if (!confirm('¿Eliminar este documento?')) return
-    try {
-      await supabase.from('client_documents').delete().eq('id', docId)
-      await loadCliente()
-    } catch (err) {
-      console.error('Error:', err)
-      alert('Error al eliminar documento')
-    }
+  const closeEditModal = () => {
+    setShowEditModal(false)
+  }
+
+  const validateForm = (): boolean => {
+    return validation.name.valid && validation.phone.valid && validation.email.valid && validation.cif.valid && validation.cp.valid
   }
 
   const saveCliente = async () => {
     if (!user || !cliente) return
     
+    if (!validateForm()) {
+      alert('⚠️ Corrige los errores antes de guardar')
+      return
+    }
+
+    setSaving(true)
+    
     try {
       const { error } = await supabase
         .from('clientes')
         .update({
-          name: form.name.trim(),
+          name: sanitizeInput(form.name.trim()),
           phone: form.phone.trim(),
           email: form.email.trim(),
-          address: form.address.trim(),
-          local: form.local.trim(),
+          address: sanitizeInput(form.address.trim()),
+          local: sanitizeInput(form.local.trim()),
           cif: form.cif.trim().toUpperCase(),
           cp: form.cp.trim(),
-          ciudad: form.ciudad.trim(),
+          ciudad: sanitizeInput(form.ciudad.trim()),
           estado: form.estado,
-          tags: form.tags.trim(),
-          notes: form.notes.trim()
+          tags: sanitizeInput(form.tags.trim()),
+          notes: sanitizeInput(form.notes.trim())
         })
         .eq('id', clientId)
 
       if (error) throw error
       
+      clearEditFromStorage()
       setShowEditModal(false)
       await loadCliente()
-      alert('Cliente actualizado ✅')
+      alert('✅ Cliente actualizado')
     } catch (err) {
       console.error('Error:', err)
-      alert('Error al actualizar cliente')
+      alert('❌ Error al actualizar cliente')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const descargarPDF = async (presupuesto: Presupuesto, type: 'presupuesto' | 'factura') => {
+    try {
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF('p', 'mm', 'a4')
+      const titulo = type === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'
+
+      doc.setFontSize(24)
+      doc.setFont(undefined, 'bold')
+      doc.text(titulo, 105, 20, { align: 'center' })
+
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'normal')
+      doc.text(`Número: ${presupuesto.numero}`, 20, 35)
+      doc.text(`Fecha: ${new Date(presupuesto.fecha).toLocaleDateString('es-ES')}`, 120, 35)
+
+      doc.setFont(undefined, 'bold')
+      doc.text(`TOTAL: ${presupuesto.total.toFixed(2)}€`, 20, 50)
+
+      doc.setFont(undefined, 'normal')
+      doc.text(`Cliente: ${cliente?.name}`, 20, 60)
+      doc.text(`Estado: ${presupuesto.estado}`, 20, 70)
+
+      doc.save(`${type}-${presupuesto.numero}.pdf`)
+      alert('✅ PDF descargado')
+    } catch (err) {
+      console.error('Error:', err)
+      alert('❌ Error al descargar PDF')
     }
   }
 
@@ -288,52 +364,51 @@ export default function ClienteDetalle() {
     <div className={styles.app}>
       <Sidebar active="/dashboard/clientes" />
 
-      <main className={styles.main} style={{ background: '#f6f2ea', minHeight: '100vh', padding: '1.5rem' }}>
-        <button onClick={() => router.push('/dashboard/clientes')} style={{ color: '#d96b5b', textDecoration: 'none', fontSize: '14px', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'inherit' }}>← Clientes</button>
+      <main className={styles.main} style={{ background: '#f6f2ea', minHeight: '100vh', padding: 'clamp(1rem, 2vw, 1.5rem)' }}>
+        <button onClick={() => router.push('/dashboard/clientes')} style={{ color: '#d96b5b', textDecoration: 'none', fontSize: 'clamp(0.85rem, 2vw, 0.95rem)', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'inherit' }}>← Clientes</button>
 
-        <section style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', alignItems: 'flex-start', marginTop: '1.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '200px' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: color, opacity: 0.2, flexShrink: 0 }} />
+        <section style={{ display: 'flex', justifyContent: 'space-between', gap: 'clamp(0.5rem, 2vw, 1.5rem)', alignItems: 'flex-start', marginTop: 'clamp(1rem, 2vw, 1.5rem)', marginBottom: 'clamp(1rem, 2vw, 2rem)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', minWidth: '200px' }}>
+            <div style={{ width: 'clamp(48px, 8vw, 64px)', height: 'clamp(48px, 8vw, 64px)', borderRadius: '16px', background: color, opacity: 0.2, flexShrink: 0 }} />
             <div>
-              <h1 style={{ margin: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(24px, 5vw, 42px)', lineHeight: 1.1, color: '#071018' }}>{cliente.name}</h1>
-              <p style={{ marginTop: '.5rem', color: '#64748b', fontSize: '.9rem' }}>
-                {cliente.tags || 'Sin categoría'} · Alta {cliente.created_at?.split('T')[0]}
-              </p>
+              <h1 style={{ margin: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1.5rem, 5vw, 2.6rem)', lineHeight: 1.1, color: '#071018' }}>{cliente.name}</h1>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
-            <button onClick={() => setShowEditModal(true)} style={{ padding: 'clamp(0.5rem, 2vw, 0.9rem) clamp(1rem, 3vw, 1.5rem)', borderRadius: '6px', border: '1px solid #ddd6c9', background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.75rem, 2vw, 1rem)' }}>✎ Editar</button>
-            <button onClick={() => router.push(`/dashboard/presupuestos/nuevo?client_id=${clientId}`)} style={{ padding: 'clamp(0.5rem, 2vw, 0.9rem) clamp(1rem, 3vw, 1.5rem)', borderRadius: '6px', border: 'none', background: '#0b1820', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.75rem, 2vw, 1rem)' }}>+ Presupuesto</button>
+          <div style={{ display: 'flex', gap: 'clamp(0.4rem, 1vw, 0.7rem)', flexWrap: 'wrap' }}>
+            <button onClick={openEdit} style={{ padding: 'clamp(0.4rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.2rem)', borderRadius: '6px', border: '1px solid #ddd6c9', background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', whiteSpace: 'nowrap' }}>✎ Editar</button>
+            <button onClick={() => router.push('/dashboard/documentos')} style={{ padding: 'clamp(0.4rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.2rem)', borderRadius: '6px', border: 'none', background: '#0b1820', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', whiteSpace: 'nowrap' }}>+ Documentos</button>
+            <button onClick={() => router.push('/dashboard/agenda')} style={{ padding: 'clamp(0.4rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.2rem)', borderRadius: '6px', border: 'none', background: '#2d5a27', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', whiteSpace: 'nowrap' }}>📅 Agenda</button>
           </div>
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(250px, 80vw, 300px), 1fr))', gap: 'clamp(1rem, 2vw, 1.5rem)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.8rem, 2vw, 1.2rem)' }}>
             {/* PRESUPUESTOS */}
-            <div style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: '1.5rem', overflow: 'auto' }}>
-              <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1.3rem, 4vw, 1.6rem)' }}>Presupuestos</h2>
+            <div style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: 'clamp(1rem, 2vw, 1.5rem)', overflow: 'auto' }}>
+              <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1rem, 3vw, 1.3rem)' }}>Presupuestos</h2>
               {presupuestos.length > 0 ? (
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'clamp(0.75rem, 2vw, 0.9rem)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>
                     <thead>
                       <tr style={{ background: '#f3f0ea' }}>
-                        <th style={{ textAlign: 'left', padding: '0.7rem', color: '#64748b', fontWeight: 700 }}>N°</th>
-                        <th style={{ textAlign: 'left', padding: '0.7rem', color: '#64748b', fontWeight: 700 }}>Fecha</th>
-                        <th style={{ textAlign: 'left', padding: '0.7rem', color: '#64748b', fontWeight: 700 }}>Importe</th>
-                        <th style={{ textAlign: 'left', padding: '0.7rem', color: '#64748b', fontWeight: 700 }}>Estado</th>
+                        <th style={{ textAlign: 'left', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>N°</th>
+                        <th style={{ textAlign: 'left', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>Fecha</th>
+                        <th style={{ textAlign: 'left', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>Importe</th>
+                        <th style={{ textAlign: 'center', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>PDF</th>
                       </tr>
                     </thead>
                     <tbody>
                       {presupuestos.map(p => (
-                        <tr key={p.id} style={{ borderBottom: '1px solid #e5ddcf', cursor: 'pointer', borderLeft: `4px solid ${ESTADO_STRIPE[p.estado]}` }} onClick={() => router.push(`/dashboard/presupuestos/${p.id}`)}>
-                          <td style={{ padding: '0.9rem 0.7rem', fontWeight: 800 }}>{p.numero}</td>
-                          <td style={{ padding: '0.9rem 0.7rem' }}>{p.fecha}</td>
-                          <td style={{ padding: '0.9rem 0.7rem' }}>{p.total.toFixed(2)} €</td>
-                          <td style={{ padding: '0.9rem 0.7rem' }}>
-                            <span style={{ background: ESTADO_BG[p.estado], color: ESTADO_COLOR[p.estado], padding: '0.25rem 0.5rem', borderRadius: '999px', fontSize: 'clamp(0.6rem, 1.5vw, 0.75rem)', fontWeight: 800 }}>
-                              {p.estado}
-                            </span>
+                        <tr key={p.id} style={{ borderBottom: '1px solid #e5ddcf', borderLeft: `4px solid ${ESTADO_STRIPE[p.estado]}` }}>
+                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', fontWeight: 800, fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>{p.numero}</td>
+                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>{new Date(p.fecha).toLocaleDateString('es-ES')}</td>
+                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', fontWeight: 700, fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>{p.total.toFixed(2)}€</td>
+                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              <button onClick={() => descargarPDF(p, 'presupuesto')} title="Presupuesto" style={{ padding: '0.25rem 0.4rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 4, fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📄</button>
+                              <button onClick={() => descargarPDF(p, 'factura')} title="Factura" style={{ padding: '0.25rem 0.4rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 4, fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🧾</button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -341,34 +416,34 @@ export default function ClienteDetalle() {
                   </table>
                 </div>
               ) : (
-                <p style={{ color: '#64748b', margin: '1rem 0 0 0', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>Sin presupuestos. <button onClick={() => router.push(`/dashboard/presupuestos/nuevo?client_id=${clientId}`)} style={{ color: '#2d5a27', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600, fontFamily: 'inherit' }}>Crear uno</button></p>
+                <p style={{ color: '#64748b', margin: '1rem 0 0 0', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)' }}>Sin presupuestos. <button onClick={() => router.push('/dashboard/presupuestos')} style={{ color: '#2d5a27', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600, fontFamily: 'inherit' }}>Ver panel</button></p>
               )}
             </div>
 
             {/* CITAS */}
-            <div style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: '1.5rem', overflow: 'auto' }}>
-              <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1.3rem, 4vw, 1.6rem)' }}>Visitas y citas</h2>
+            <div style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: 'clamp(1rem, 2vw, 1.5rem)', overflow: 'auto' }}>
+              <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1rem, 3vw, 1.3rem)' }}>Visitas y citas</h2>
               {citas.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.6rem, 1.5vw, 1rem)', maxHeight: '400px', overflowY: 'auto' }}>
                   {citas.map(c => (
-                    <div key={c.id} style={{ paddingBottom: '1rem', borderBottom: '1px solid #e5ddcf', borderLeft: `4px solid ${ESTADO_STRIPE[c.estado]}`, paddingLeft: '0.8rem' }}>
-                      <p style={{ margin: 0, color: '#64748b', fontSize: 'clamp(0.75rem, 2vw, 0.85rem)' }}>{c.date} · {c.time}</p>
-                      <strong style={{ display: 'block', marginTop: '0.3rem', fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>{c.title}</strong>
-                      {c.place && <p style={{ marginTop: '0.3rem', color: '#64748b', fontSize: 'clamp(0.75rem, 2vw, 0.9rem)' }}>📍 {c.place}</p>}
-                      {c.notes && <p style={{ marginTop: '0.3rem', color: '#64748b', fontSize: 'clamp(0.75rem, 2vw, 0.9rem)' }}>{c.notes}</p>}
-                      <span style={{ display: 'inline-block', marginTop: '0.5rem', background: ESTADO_BG[c.estado], color: ESTADO_COLOR[c.estado], padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)', fontWeight: 700 }}>{c.estado}</span>
+                    <div key={c.id} style={{ paddingBottom: 'clamp(0.6rem, 1.5vw, 1rem)', borderBottom: '1px solid #e5ddcf', borderLeft: `4px solid ${ESTADO_STRIPE[c.estado]}`, paddingLeft: '0.8rem' }}>
+                      <p style={{ margin: 0, color: '#64748b', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)' }}>{new Date(c.date).toLocaleDateString('es-ES')} · {c.time}</p>
+                      <strong style={{ display: 'block', marginTop: '0.3rem', fontSize: 'clamp(0.75rem, 2vw, 0.9rem)' }}>{c.title}</strong>
+                      {c.place && <p style={{ marginTop: '0.3rem', color: '#64748b', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)' }}>📍 {c.place}</p>}
+                      {c.notes && <p style={{ marginTop: '0.3rem', color: '#64748b', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)' }}>{c.notes}</p>}
+                      <span style={{ display: 'inline-block', marginTop: '0.5rem', background: ESTADO_BG[c.estado], color: ESTADO_COLOR[c.estado], padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', fontWeight: 700 }}>{c.estado}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', margin: '1rem 0 0 0', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>Sin citas programadas. <button onClick={() => router.push(`/dashboard/agenda?client_id=${clientId}`)} style={{ color: color, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600, fontFamily: 'inherit' }}>Crear una</button></p>
+                <p style={{ color: '#64748b', margin: '1rem 0 0 0', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)' }}>Sin citas programadas. <button onClick={() => router.push('/dashboard/agenda')} style={{ color: color, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600, fontFamily: 'inherit' }}>Ver agenda</button></p>
               )}
             </div>
           </div>
 
           {/* SIDEBAR - FICHA */}
-          <aside style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: '1.5rem', minHeight: '300px', position: 'sticky', top: '1.5rem' }}>
-            <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1.3rem, 4vw, 1.6rem)' }}>Ficha</h2>
+          <aside style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: 'clamp(1rem, 2vw, 1.5rem)', minHeight: '300px', position: 'sticky', top: 'clamp(0.5rem, 2vw, 1.5rem)' }}>
+            <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1rem, 3vw, 1.3rem)' }}>Ficha</h2>
             <FichaItem label="Email" value={cliente.email || '—'} />
             <FichaItem label="Teléfono" value={cliente.phone || '—'} />
             <FichaItem label="CIF" value={(cliente as any).cif || '—'} />
@@ -380,44 +455,67 @@ export default function ClienteDetalle() {
             <FichaItem label="Notas" value={cliente.notes || '—'} />
 
             <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5ddcf' }}>
-              <button onClick={async () => { if (confirm('¿Eliminar este cliente?')) { const { error } = await supabase.from('clientes').delete().eq('id', clientId); if (!error) router.push('/dashboard/clientes') } }} style={{ width: '100%', padding: '.5rem', background: '#fcebeb', color: '#991f1f', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', fontFamily: 'inherit' }}>🗑️ Eliminar cliente</button>
+              <button onClick={async () => { if (confirm('¿Eliminar este cliente?')) { const { error } = await supabase.from('clientes').delete().eq('id', clientId); if (!error) router.push('/dashboard/clientes') } }} style={{ width: '100%', padding: 'clamp(0.4rem, 1.5vw, 0.65rem)', background: '#fcebeb', color: '#991f1f', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', fontFamily: 'inherit' }}>🗑️ Eliminar cliente</button>
             </div>
           </aside>
         </section>
 
         {/* MODAL EDITAR CLIENTE */}
         {showEditModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)', overflow: 'auto' }} onClick={() => setShowEditModal(false)}>
-            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 16px 48px rgba(10,15,20,.13)', margin: 'auto' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #e2ddd4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
-                <div style={{ fontFamily: 'Syne,sans-serif', fontSize: '1rem', fontWeight: 700 }}>Editar cliente</div>
-                <button onClick={() => setShowEditModal(false)} style={{ width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.1rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(1rem, 2vw, 1.5rem)', backdropFilter: 'blur(8px)', overflow: 'auto' }} onClick={closeEditModal}>
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 'clamp(300px, 95vw, 600px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 16px 48px rgba(10,15,20,.13)', margin: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: 'clamp(0.8rem, 2vw, 1.1rem) clamp(1rem, 2vw, 1.4rem)', borderBottom: '1px solid #e2ddd4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
+                <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 'clamp(0.9rem, 2vw, 1rem)', fontWeight: 700 }}>Editar cliente</div>
+                <button onClick={closeEditModal} style={{ width: 'clamp(24px, 5vw, 28px)', height: 'clamp(24px, 5vw, 28px)', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 'clamp(0.9rem, 2vw, 1.1rem)', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
               </div>
-              <div style={{ padding: '1.35rem', display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
+              <div style={{ padding: 'clamp(1rem, 2vw, 1.35rem)', display: 'flex', flexDirection: 'column', gap: 'clamp(0.6rem, 2vw, 0.85rem)' }}>
                 {[
-                  { label:'Nombre *', key:'name', type:'text' },
-                  { label:'Teléfono / WhatsApp', key:'phone', type:'tel' },
-                  { label:'Email', key:'email', type:'email' },
-                  { label:'CIF', key:'cif', type:'text' },
-                  { label:'Código Postal', key:'cp', type:'text' },
-                  { label:'Ciudad', key:'ciudad', type:'text' },
-                  { label:'Dirección', key:'address', type:'text' },
-                  { label:'Nombre del local', key:'local', type:'text' },
-                  { label:'Etiqueta', key:'tags', type:'text' },
+                  { label:'Nombre *', key:'name', type:'text', validation: 'name' },
+                  { label:'Teléfono / WhatsApp', key:'phone', type:'tel', validation: 'phone' },
+                  { label:'Email', key:'email', type:'email', validation: 'email' },
+                  { label:'CIF', key:'cif', type:'text', validation: 'cif' },
+                  { label:'Código Postal', key:'cp', type:'text', validation: 'cp' },
+                  { label:'Ciudad', key:'ciudad', type:'text', validation: null },
+                  { label:'Dirección', key:'address', type:'text', validation: null },
+                  { label:'Nombre del local', key:'local', type:'text', validation: null },
+                  { label:'Etiqueta', key:'tags', type:'text', validation: null },
                 ].map(f => (
                   <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>{f.label}</label>
+                    <label style={{ display: 'block', fontSize: 'clamp(0.6rem, 1.5vw, 0.68rem)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>{f.label}</label>
                     <input
                       type={f.type}
                       value={form[f.key as keyof typeof form]}
                       onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                      style={{ width: '100%', padding: '.7rem .85rem', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: '.875rem', fontFamily: 'inherit', transition: 'all .15s', color: '#0a0f14', outline: 'none' }}
+                      style={{ 
+                        width: '100%', 
+                        padding: 'clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.85rem)', 
+                        background: '#fff', 
+                        border: f.validation && !validation[f.validation as keyof typeof validation].valid 
+                          ? '1.5px solid #dc2626' 
+                          : '1.5px solid #cbd5e1', 
+                        borderRadius: 8, 
+                        fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', 
+                        fontFamily: 'inherit', 
+                        transition: 'all .15s', 
+                        color: '#0a0f14', 
+                        outline: 'none' 
+                      }}
                     />
+                    {f.validation && validation[f.validation as keyof typeof validation].message && (
+                      <div style={{ 
+                        fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', 
+                        color: validation[f.validation as keyof typeof validation].valid ? '#16a34a' : '#dc2626', 
+                        marginTop: '.25rem',
+                        fontWeight: 600
+                      }}>
+                        {validation[f.validation as keyof typeof validation].message}
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div>
-                  <label style={{ display: 'block', fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>Estado</label>
-                  <select value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })} style={{ width: '100%', padding: '.7rem .85rem', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: '.875rem', fontFamily: 'inherit', color: '#0a0f14' }}>
+                  <label style={{ display: 'block', fontSize: 'clamp(0.6rem, 1.5vw, 0.68rem)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>Estado</label>
+                  <select value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })} style={{ width: '100%', padding: 'clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.85rem)', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', fontFamily: 'inherit', color: '#0a0f14' }}>
                     <option value="nuevo">Nuevo</option>
                     <option value="contactado">Contactado</option>
                     <option value="cita">Cita agendada</option>
@@ -425,13 +523,13 @@ export default function ClienteDetalle() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>Notas internas</label>
-                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} style={{ width: '100%', padding: '.7rem .85rem', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: '.875rem', fontFamily: 'inherit', resize: 'vertical', color: '#0a0f14' }} />
+                  <label style={{ display: 'block', fontSize: 'clamp(0.6rem, 1.5vw, 0.68rem)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>Notas internas</label>
+                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} style={{ width: '100%', padding: 'clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.85rem)', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', fontFamily: 'inherit', resize: 'vertical', color: '#0a0f14' }} />
                 </div>
               </div>
-              <div style={{ padding: '1rem 1.4rem', borderTop: '1px solid #e2ddd4', display: 'flex', justifyContent: 'flex-end', gap: '.55rem', flexWrap: 'wrap' }}>
-                <button onClick={() => setShowEditModal(false)} style={{ padding: '.65rem 1.1rem', background: 'transparent', color: '#0a0f14', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: '.84rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
-                <button onClick={saveCliente} style={{ padding: '.65rem 1.1rem', background: '#0a0f14', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.84rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Guardar cambios</button>
+              <div style={{ padding: 'clamp(0.8rem, 2vw, 1rem) clamp(1rem, 2vw, 1.4rem)', borderTop: '1px solid #e2ddd4', display: 'flex', justifyContent: 'flex-end', gap: 'clamp(0.4rem, 1vw, 0.55rem)', flexWrap: 'wrap' }}>
+                <button onClick={closeEditModal} style={{ padding: 'clamp(0.5rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.1rem)', background: 'transparent', color: '#0a0f14', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: 'clamp(0.7rem, 2vw, 0.84rem)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Cancelar</button>
+                <button onClick={saveCliente} disabled={saving || !validateForm()} style={{ padding: 'clamp(0.5rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.1rem)', background: validateForm() ? '#0a0f14' : '#cbd5e1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 'clamp(0.7rem, 2vw, 0.84rem)', fontWeight: 600, cursor: validateForm() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: saving ? 0.7 : 1, whiteSpace: 'nowrap' }}>{saving ? 'Guardando…' : 'Guardar cambios'}</button>
               </div>
             </div>
           </div>
@@ -443,9 +541,9 @@ export default function ClienteDetalle() {
 
 function FichaItem({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ marginBottom: '1.2rem' }}>
-      <div style={{ textTransform: 'uppercase', letterSpacing: '2px', color: '#64748b', fontSize: 'clamp(0.75rem, 1.5vw, 0.85rem)', marginBottom: '0.4rem', fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 'clamp(0.85rem, 2vw, 0.95rem)', color: '#071018', wordBreak: 'break-word' }}>{value}</div>
+    <div style={{ marginBottom: 'clamp(0.8rem, 2vw, 1.2rem)' }}>
+      <div style={{ textTransform: 'uppercase', letterSpacing: '2px', color: '#1c2b3a', fontSize: 'clamp(0.7rem, 1.5vw, 0.8rem)', marginBottom: '0.4rem', fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)', color: '#071018', wordBreak: 'break-word' }}>{value}</div>
     </div>
   )
 }
