@@ -60,7 +60,7 @@ export default function LoginPage() {
 
       <div className={styles.authMain}>
         <form className={styles.authForm} onSubmit={handleLogin}>
-          <h2>Bienvenido de vuelta</h2>
+          <h2>Bienvenido</h2>
           <p className={styles.lead}>Entra y ponte al día en segundos.</p>
 
           {error && (

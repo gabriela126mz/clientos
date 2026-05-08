@@ -69,7 +69,7 @@ export default function LoginPage() {
       <section className={styles.authSide}>
         <div>
           <div className={styles.brand}>
-            Clientos <span className={styles.brandDot}></span>
+            Emprenix <span className={styles.brandDot}></span>
           </div>
 
           <h1 className={styles.tagline}>
@@ -78,20 +78,21 @@ export default function LoginPage() {
           </h1>
 
           <p className={styles.taglineSub}>
-            CRM + agenda + presupuestos + landing propia. Todo en uno para emprendedores sin tiempo.
+            CRM + agenda + presupuestos + web propia. Todo en uno para emprendedores sin tiempo.
           </p>
         </div>
 
         <div className={styles.pills}>
-          <span>✓ Landing propia</span>
+          <span>✓ Web propia</span>
           <span>✓ CRM clientes</span>
-          <span>✓ Facturación</span>
+          <span>✓ Presupuesto</span>
+          <span>✓ Factura</span>
         </div>
       </section>
 
       <section className={styles.authMain}>
         <form className={styles.authForm} onSubmit={handleLogin}>
-          <h2>Bienvenido de vuelta</h2>
+          <h2>Bienvenido</h2>
           <p className={styles.lead}>Inicia sesión para gestionar tu negocio.</p>
 
           {infoMsg && (

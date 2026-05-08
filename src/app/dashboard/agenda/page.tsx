@@ -1,5 +1,5 @@
 'use client'
-import { AppInput } from '@/components/ui/AppInput'
+
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Sidebar } from '../page'
@@ -20,10 +20,25 @@ interface Cita {
   time: string
   place: string
   notes: string
-  estado: 'nuevo' | 'contactado' | 'cita' | 'completado'
+  estado: 'nuevo' | 'contactado' | 'cita' | 'completado' | 'pendiente' | 'confirmada' | 'completada' | 'cancelada'
 }
 
-// Colores consistentes para clientes
+interface CitaFormData {
+  title: string
+  date: string
+  time: string
+  place: string
+  notes: string
+  clientId: string
+  clientName: string
+  estado: string
+}
+
+const STORAGE_KEYS = {
+  NEW_CITA_FORM: 'form_agenda_new_cita',
+  EDIT_CITA_FORM: (citaId: string) => `form_agenda_edit_cita_${citaId}`,
+}
+
 const getClientColor = (clientName: string): string => {
   const colors = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#e11d48', '#854d0e']
   let hash = 0
@@ -62,6 +77,37 @@ const getClientTextColor = (color: string): string => {
   return textMap[color] || '#0a0f14'
 }
 
+const loadFormFromStorage = (key: string, defaultForm: CitaFormData): CitaFormData => {
+  if (typeof window === 'undefined') return defaultForm
+  try {
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (err) {
+    console.error('Error loading form from storage:', err)
+  }
+  return defaultForm
+}
+
+const saveFormToStorage = (key: string, formData: CitaFormData) => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(key, JSON.stringify(formData))
+  } catch (err) {
+    console.error('Error saving form to storage:', err)
+  }
+}
+
+const clearFormStorage = (key: string) => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(key)
+  } catch (err) {
+    console.error('Error clearing form storage:', err)
+  }
+}
+
 function AgendaContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -77,25 +123,26 @@ function AgendaContent() {
 
   const [showForm, setShowForm] = useState(false)
   const [editingCitaId, setEditingCitaId] = useState<string | null>(null)
-
-  const [formDate, setFormDate] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
-  const [formTime, setFormTime] = useState('10:00')
-  const [formTitle, setFormTitle] = useState('')
-  const [formPlace, setFormPlace] = useState('')
-  const [formNotes, setFormNotes] = useState('')
-  const [formClientId, setFormClientId] = useState('')
-  const [formClientName, setFormClientName] = useState('')
-  const [formEstado, setFormEstado] = useState('pendiente')
+  const [error, setError] = useState('')
 
   const [miniCalendarMonth, setMiniCalendarMonth] = useState(today.getMonth())
   const [miniCalendarYear, setMiniCalendarYear] = useState(today.getFullYear())
 
-  // Cargar citas y clientes
+  const [formData, setFormData] = useState<CitaFormData>({
+    title: '',
+    date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+    time: '10:00',
+    place: '',
+    notes: '',
+    clientId: '',
+    clientName: '',
+    estado: 'pendiente',
+  })
+
   const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     try {
-      // Cargar citas
       const { data: citasData, error: citasError } = await supabase
         .from('citas')
         .select('*')
@@ -106,7 +153,6 @@ function AgendaContent() {
         setCitas(citasData || [])
       }
 
-      // Cargar clientes
       const { data: clientesData, error: clientesError } = await supabase
         .from('clientes')
         .select('*')
@@ -132,18 +178,45 @@ function AgendaContent() {
     loadData()
   }, [authLoading, user, loadData, router])
 
-  // Efecto separado para el client_id de URL (solo al cargar clientes)
+  useEffect(() => {
+    const defaultForm: CitaFormData = {
+      title: '',
+      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+      time: '10:00',
+      place: '',
+      notes: '',
+      clientId: '',
+      clientName: '',
+      estado: 'pendiente',
+    }
+    const storedForm = loadFormFromStorage(STORAGE_KEYS.NEW_CITA_FORM, defaultForm)
+    setFormData(storedForm)
+  }, [])
+
   useEffect(() => {
     const clientId = searchParams.get('client_id')
     if (clientId && clientes.length > 0) {
       const cliente = clientes.find(c => c.id === clientId)
       if (cliente) {
-        setFormClientId(clientId)
-        setFormClientName(cliente.name)
+        const updatedForm = { ...formData, clientId, clientName: cliente.name }
+        setFormData(updatedForm)
+        saveFormToStorage(STORAGE_KEYS.NEW_CITA_FORM, updatedForm)
         setShowForm(true)
       }
     }
   }, [searchParams, clientes])
+
+  // ✅ GUARDADO AUTOMÁTICO EN CADA CAMBIO
+  const handleFormChange = (field: keyof CitaFormData, value: string) => {
+    const updatedForm = { ...formData, [field]: value }
+    setFormData(updatedForm)
+    
+    if (editingCitaId) {
+      saveFormToStorage(STORAGE_KEYS.EDIT_CITA_FORM(editingCitaId), updatedForm)
+    } else {
+      saveFormToStorage(STORAGE_KEYS.NEW_CITA_FORM, updatedForm)
+    }
+  }
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -151,13 +224,11 @@ function AgendaContent() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const offset = firstDay === 0 ? 6 : firstDay - 1
 
-  // Citas del mes actual
   const citasDelMes = citas.filter(c => {
     const [y, m] = c.date.split('-')
     return Number(y) === year && Number(m) === month + 1
   })
 
-  // Agrupar citas por día
   const citasPorDia = citasDelMes.reduce((acc, cita) => {
     const day = Number(cita.date.split('-')[2])
     if (!acc[day]) acc[day] = []
@@ -167,92 +238,129 @@ function AgendaContent() {
 
   const selectedEvents = selectedDay ? (citasPorDia[selectedDay] || []) : []
 
-  // Próximas citas
   const proximasCitas = citas
     .filter(c => new Date(c.date + 'T' + c.time) >= new Date())
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 6)
 
   const resetForm = () => {
+    const defaultForm: CitaFormData = {
+      title: '',
+      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+      time: '10:00',
+      place: '',
+      notes: '',
+      clientId: '',
+      clientName: '',
+      estado: 'pendiente',
+    }
+    setFormData(defaultForm)
     setEditingCitaId(null)
-    setFormDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
-    setFormTime('10:00')
-    setFormTitle('')
-    setFormPlace('')
-    setFormNotes('')
-    setFormClientId('')
-    setFormClientName('')
-    setFormEstado('pendiente')
     setMiniCalendarMonth(today.getMonth())
     setMiniCalendarYear(today.getFullYear())
+    setError('')
   }
 
   const openNewCita = (day?: number) => {
-    resetForm()
-    if (day) {
-      setFormDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`)
+    // Cargar desde localStorage sin borrar nada
+    const defaultForm: CitaFormData = {
+      title: '',
+      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+      time: '10:00',
+      place: '',
+      notes: '',
+      clientId: '',
+      clientName: '',
+      estado: 'pendiente',
     }
+    const storedForm = loadFormFromStorage(STORAGE_KEYS.NEW_CITA_FORM, defaultForm)
+    
+    // Si viene un day específico, actualiza la fecha pero preserva todo lo demás
+    if (day) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const updatedForm = { ...storedForm, date: dateStr }
+      setFormData(updatedForm)
+      saveFormToStorage(STORAGE_KEYS.NEW_CITA_FORM, updatedForm)
+    } else {
+      setFormData(storedForm)
+    }
+    
+    setEditingCitaId(null)
+    setMiniCalendarMonth(today.getMonth())
+    setMiniCalendarYear(today.getFullYear())
+    setError('')
     setShowForm(true)
   }
 
   const openEditCita = (cita: Cita) => {
+    const editForm: CitaFormData = {
+      title: cita.title,
+      date: cita.date,
+      time: cita.time,
+      place: cita.place || '',
+      notes: cita.notes || '',
+      clientId: cita.client_id,
+      clientName: cita.client_name,
+      estado: cita.estado,
+    }
+    
+    const storedForm = loadFormFromStorage(STORAGE_KEYS.EDIT_CITA_FORM(cita.id), editForm)
+    
     setEditingCitaId(cita.id)
-    setFormDate(cita.date)
-    setFormTime(cita.time)
-    setFormTitle(cita.title)
-    setFormPlace(cita.place || '')
-    setFormNotes(cita.notes || '')
-    setFormClientId(cita.client_id)
-    setFormClientName(cita.client_name)
-    setFormEstado(cita.estado)
+    setFormData(storedForm)
     setShowForm(true)
+    setError('')
   }
 
   const saveCita = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!user) return
-    if (!formTitle.trim()) {
-      alert('Escribe el título de la visita')
+    if (!formData.title.trim()) {
+      setError('Escribe el título de la visita')
       return
     }
-    if (!formClientId && !formClientName.trim()) {
-      alert('Selecciona o escribe el cliente')
+    if (!formData.clientId && !formData.clientName.trim()) {
+      setError('Selecciona o escribe el cliente')
       return
     }
 
     const payload = {
       user_id: user.id,
-      client_id: formClientId || null,
-      client_name: formClientName.trim(),
-      title: formTitle.trim(),
-      date: formDate,
-      time: formTime,
-      place: formPlace.trim(),
-      notes: formNotes.trim(),
-      estado: formEstado,
+      client_id: formData.clientId || null,
+      client_name: formData.clientName.trim(),
+      title: formData.title.trim(),
+      date: formData.date,
+      time: formData.time,
+      place: formData.place.trim(),
+      notes: formData.notes.trim(),
+      estado: formData.estado,
     }
 
     try {
       if (editingCitaId) {
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('citas')
           .update(payload)
           .eq('id', editingCitaId)
 
-        if (error) {
-          alert('Error al actualizar: ' + error.message)
+        if (updateError) {
+          setError('Error al actualizar: ' + updateError.message)
           return
         }
+
+        clearFormStorage(STORAGE_KEYS.EDIT_CITA_FORM(editingCitaId))
       } else {
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('citas')
           .insert([payload])
 
-        if (error) {
-          alert('Error al crear: ' + error.message)
+        if (insertError) {
+          setError('Error al crear: ' + insertError.message)
           return
         }
+
+        clearFormStorage(STORAGE_KEYS.NEW_CITA_FORM)
       }
 
       await loadData()
@@ -261,7 +369,7 @@ function AgendaContent() {
       alert(editingCitaId ? '✅ Cita actualizada' : '✅ Cita creada')
     } catch (err) {
       console.error(err)
-      alert('Error inesperado')
+      setError('Error inesperado')
     }
   }
 
@@ -269,16 +377,17 @@ function AgendaContent() {
     if (!confirm('¿Eliminar esta cita?')) return
 
     try {
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('citas')
         .delete()
         .eq('id', id)
 
-      if (error) {
-        alert('Error: ' + error.message)
+      if (deleteError) {
+        alert('Error: ' + deleteError.message)
         return
       }
 
+      clearFormStorage(STORAGE_KEYS.EDIT_CITA_FORM(id))
       await loadData()
       resetForm()
       setShowForm(false)
@@ -288,6 +397,18 @@ function AgendaContent() {
       alert('Error inesperado')
     }
   }
+
+  const handleCloseForm = () => {
+    setShowForm(false)
+    setError('')
+  }
+
+  // ✅ Cargar clientes cuando se abre el modal
+  useEffect(() => {
+    if (showForm && user) {
+      loadData()
+    }
+  }, [showForm, user, loadData])
 
   if (loading) {
     return (
@@ -308,20 +429,23 @@ function AgendaContent() {
     <div className={styles.app}>
       <Sidebar active="/dashboard/agenda" />
 
-      <main className={styles.main}>
+      <main className={styles.main} style={{ background: '#ffffff' }}>
         <div className={styles.ph}>
           <div>
-            <h1 className={styles.phTitle}>Agenda</h1>
+            <h1 className={styles.phTitle}>📅 Agenda</h1>
             <p className={styles.phSub}>Toca una cita para editarla o añade una nueva.</p>
           </div>
 
-          <button className={styles.btnDark} onClick={() => openNewCita()}>
+          <button 
+            className={styles.btnDark} 
+            onClick={() => openNewCita()}
+            style={{ background: '#2563eb' }}
+          >
             + Nueva cita
           </button>
         </div>
 
         <div className={aStyles.layout}>
-          {/* CALENDARIO */}
           <div className={aStyles.calCard}>
             <div className={aStyles.calNav}>
               <button className={aStyles.calNavBtn} onClick={() => setViewDate(new Date(year, month - 1, 1))}>← Anterior</button>
@@ -395,7 +519,6 @@ function AgendaContent() {
             </div>
           </div>
 
-          {/* SIDEBAR */}
           <div className={aStyles.sidePanel}>
             {selectedDay ? (
               <div className={styles.card}>
@@ -409,7 +532,7 @@ function AgendaContent() {
 
                   <button
                     className={styles.btnDark}
-                    style={{ padding: '.35rem .7rem', fontSize: '.78rem' }}
+                    style={{ padding: '.35rem .7rem', fontSize: '.78rem', background: '#2563eb' }}
                     onClick={() => openNewCita(selectedDay)}
                   >
                     + Añadir
@@ -464,7 +587,7 @@ function AgendaContent() {
                       style={{
                         marginTop: '.65rem',
                         padding: '.45rem .9rem',
-                        background: '#0a0f14',
+                        background: '#2563eb',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 8,
@@ -530,7 +653,6 @@ function AgendaContent() {
           </div>
         </div>
 
-        {/* MODAL */}
         {showForm && (
           <div className={aStyles.modalOverlay}>
             <div className={aStyles.modalBox}>
@@ -540,17 +662,31 @@ function AgendaContent() {
                   <p>{editingCitaId ? 'Modifica los datos de esta cita.' : 'Agenda una cita o seguimiento.'}</p>
                 </div>
 
-                <button className={aStyles.modalClose} onClick={() => { resetForm(); setShowForm(false) }}>
+                <button className={aStyles.modalClose} onClick={handleCloseForm}>
                   ×
                 </button>
               </div>
 
               <form onSubmit={saveCita} className={aStyles.modalForm}>
+                {error && (
+                  <div style={{
+                    background: '#fee2e2',
+                    color: '#991f1f',
+                    padding: '.75rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '.85rem',
+                    borderLeft: '4px solid #dc2626',
+                    gridColumn: '1/-1',
+                  }}>
+                    {error}
+                  </div>
+                )}
+
                 <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>¿Cuál es la cita? *</label>
                   <input
-                    value={formTitle}
-                    onChange={e => setFormTitle(e.target.value)}
+                    value={formData.title}
+                    onChange={e => handleFormChange('title', e.target.value)}
                     placeholder="Ej: Visita técnica inicial"
                     autoFocus
                   />
@@ -558,12 +694,31 @@ function AgendaContent() {
 
                 <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>Cliente *</label>
-                  {clientes.length > 0 ? (
-                    <select value={formClientId} onChange={e => {
-                      const selected = clientes.find(c => c.id === e.target.value)
-                      setFormClientId(e.target.value)
-                      if (selected) setFormClientName(selected.name)
-                    }}>
+                  {clientes && clientes.length > 0 ? (
+                    <select 
+                      value={formData.clientId || ''} 
+                      onChange={e => {
+                        const selectedValue = e.target.value
+                        handleFormChange('clientId', selectedValue)
+                        const selected = clientes.find(c => c.id === selectedValue)
+                        if (selected) {
+                          handleFormChange('clientName', selected.name)
+                        } else {
+                          handleFormChange('clientName', '')
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '.65rem .85rem',
+                        background: '#fff',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: 8,
+                        fontSize: '.875rem',
+                        fontFamily: 'inherit',
+                        color: '#0a0f14',
+                        cursor: 'pointer',
+                      }}
+                    >
                       <option value="">Selecciona un cliente…</option>
                       {clientes.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -571,14 +726,23 @@ function AgendaContent() {
                     </select>
                   ) : (
                     <input
-                      value={formClientName}
-                      onChange={e => setFormClientName(e.target.value)}
-                      placeholder="Nombre del cliente"
+                      value={formData.clientName || ''}
+                      onChange={e => handleFormChange('clientName', e.target.value)}
+                      placeholder="Escribe el nombre del cliente"
+                      style={{
+                        width: '100%',
+                        padding: '.65rem .85rem',
+                        background: '#fff',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: 8,
+                        fontSize: '.875rem',
+                        fontFamily: 'inherit',
+                        color: '#0a0f14',
+                      }}
                     />
                   )}
                 </div>
 
-                {/* MINI CALENDARIO */}
                 <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>Fecha</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem', marginBottom: '.75rem' }}>
@@ -612,21 +776,22 @@ function AgendaContent() {
                     {Array.from({ length: new Date(miniCalendarYear, miniCalendarMonth + 1, 0).getDate() }).map((_, i) => {
                       const d = i + 1
                       const dateStr = `${miniCalendarYear}-${String(miniCalendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-                      const isSelected = formDate === dateStr
+                      const isSelected = formData.date === dateStr
 
                       return (
                         <button
                           key={d}
                           type="button"
-                          onClick={() => setFormDate(dateStr)}
+                          onClick={() => handleFormChange('date', dateStr)}
                           style={{
                             padding: '.3rem',
                             borderRadius: 4,
-                            border: isSelected ? '2px solid #2d5a27' : '1px solid #e5ddcf',
-                            background: isSelected ? '#e8f5e9' : '#fff',
+                            border: isSelected ? '2px solid #2563eb' : '1px solid #e5ddcf',
+                            background: isSelected ? '#dbeafe' : '#fff',
                             fontSize: '.75rem',
                             fontWeight: isSelected ? 700 : 400,
                             cursor: 'pointer',
+                            color: isSelected ? '#1d4ed8' : '#0a0f14',
                           }}
                         >
                           {d}
@@ -637,36 +802,35 @@ function AgendaContent() {
 
                   <input
                     type="date"
-                    value={formDate}
-                    onChange={e => setFormDate(e.target.value)}
+                    value={formData.date}
+                    onChange={e => handleFormChange('date', e.target.value)}
                     style={{ width: '100%', padding: '.5rem', border: '1px solid #cbd5e1', borderRadius: 4 }}
                   />
                 </div>
 
-          <div className={aStyles.field}>
-            <label>Hora</label>
-            <AppInput
-              name="formTime"
-              type="time"
-              value={formTime}
-              onChange={(v) => setFormTime(v)}
-            />
-          </div>
+                <div className={aStyles.field}>
+                  <label>Hora</label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={e => handleFormChange('time', e.target.value)}
+                  />
+                </div>
 
-          <div className={aStyles.field}>
-            <label>Lugar</label>
-            <AppInput
-              name="formPlace"
-              value={formPlace}
-              onChange={(v) => setFormPlace(v)}
-              placeholder="Ej: En casa del cliente"
-            />
-          </div>
+                <div className={aStyles.field}>
+                  <label>Lugar</label>
+                  <input
+                    value={formData.place}
+                    onChange={e => handleFormChange('place', e.target.value)}
+                    placeholder="Ej: En casa del cliente"
+                  />
+                </div>
+
                 <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>Notas</label>
                   <textarea
-                    value={formNotes}
-                    onChange={e => setFormNotes(e.target.value)}
+                    value={formData.notes}
+                    onChange={e => handleFormChange('notes', e.target.value)}
                     placeholder="Qué llevar, qué revisar…"
                     rows={3}
                   />
@@ -674,7 +838,10 @@ function AgendaContent() {
 
                 <div className={aStyles.field} style={{ gridColumn: '1/-1' }}>
                   <label>Estado</label>
-                  <select value={formEstado} onChange={e => setFormEstado(e.target.value)}>
+                  <select 
+                    value={formData.estado} 
+                    onChange={e => handleFormChange('estado', e.target.value)}
+                  >
                     <option value="pendiente">Pendiente</option>
                     <option value="confirmada">Confirmada</option>
                     <option value="completada">Completada</option>
@@ -683,7 +850,7 @@ function AgendaContent() {
                 </div>
 
                 <div className={aStyles.modalActions}>
-                  <button type="button" className={styles.btnGhost} onClick={() => { resetForm(); setShowForm(false) }}>
+                  <button type="button" className={styles.btnGhost} onClick={handleCloseForm}>
                     Cancelar
                   </button>
 
@@ -698,7 +865,11 @@ function AgendaContent() {
                     </button>
                   )}
 
-                  <button type="submit" className={styles.btnDark}>
+                  <button 
+                    type="submit" 
+                    className={styles.btnDark}
+                    style={{ background: '#2563eb' }}
+                  >
                     {editingCitaId ? 'Guardar cambios' : 'Crear cita'}
                   </button>
                 </div>
