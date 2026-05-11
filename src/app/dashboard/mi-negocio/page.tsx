@@ -218,15 +218,35 @@ export default function MiNegocio() {
     setMessage('')
 
     try {
+      // 🔧 VALIDACIÓN: Las imágenes principales NUNCA deben estar vacías
+      const requiredImages = {
+        logo_url: form.logo_url,
+        hero_image_url: form.hero_image_url,
+      }
+
+      const missingImages = Object.entries(requiredImages)
+        .filter(([key, value]) => !value)
+        .map(([key]) => key)
+
+      if (missingImages.length > 0) {
+        setMessage(`❌ Falta subir: ${missingImages.join(', ')}`)
+        setSaving(false)
+        return
+      }
+
       const updateData = {
         ...form,
         cif: (form.cif || '').trim().toUpperCase(),
         business_email: (form.business_email || '').trim().toLowerCase(),
-        // 🔧 ASEGURAR QUE LOS COLORES SE GUARDEN EN LA BD
         color_primary: form.color_primary || null,
         color_secondary: form.color_secondary || null,
         color_accent: form.color_accent || null,
       }
+
+      console.log('💾 Guardando con imágenes:', {
+        logo_url: updateData.logo_url?.substring(0, 50),
+        hero_image_url: updateData.hero_image_url?.substring(0, 50),
+      })
 
       const { error } = await supabase
         .from('profiles')
@@ -372,16 +392,31 @@ export default function MiNegocio() {
       else if (field === 'hero_image_url') section = 'hero'
       else if (field === 'about_image') section = 'about'
       
+      console.log(`🖼️ Procesando imagen para ${field}...`)
       const optimized = await optimizeImage(file, section as keyof typeof imageConfigs)
+      
+      if (!optimized) {
+        console.error('❌ optimizeImage retornó vacío')
+        setMessage('❌ Error al procesar la imagen (optimize retornó vacío)')
+        setOptimizingImages(false)
+        return
+      }
+
+      console.log(`✅ Imagen optimizada: ${optimized.substring(0, 50)}...`)
       
       const newForm = { ...form, [field]: optimized }
       setForm(newForm)
-      await autoSave(newForm)
-      setMessage(`✅ Imagen optimizada`)
-      setTimeout(() => setMessage(''), 2000)
+      const success = await autoSave(newForm)
+      
+      if (success) {
+        setMessage(`✅ Imagen subida correctamente`)
+        setTimeout(() => setMessage(''), 2000)
+      } else {
+        setMessage('❌ Error al guardar imagen en BD')
+      }
     } catch (err) {
+      console.error('❌ Error al procesar imagen:', err)
       setMessage('❌ Error al procesar la imagen')
-      console.error(err)
     } finally {
       setOptimizingImages(false)
     }
@@ -546,33 +581,53 @@ export default function MiNegocio() {
 
           {/* ✅ IMÁGENES PRINCIPALES */}
           <SectionCollapsible title="🖼️ Imágenes principales" isOpen={expandedSections.imagenes} onClick={() => toggleSection('imagenes')}>
+            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#fff3cd', borderRadius: '8px', borderLeft: '4px solid #ffc107' }}>
+              <text style={{ fontSize: '0.85rem', color: '#856404', display: 'block', marginBottom: '0.5rem', fontWeight: 700 }}>
+                ⚠️ Estas imágenes son OBLIGATORIAS
+              </text>
+              <text style={{ fontSize: '0.75rem', color: '#856404', display: 'block' }}>
+                Si no las subes, se usarán las de la plantilla (pero es mejor que subas las tuyas)
+              </text>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 100%, 300px), 1fr))', gap: '2rem' }}>
               {[
-                { field: 'logo_url', title: 'Logo (300x300px)', icon: '📌', desc: 'Tamaño ideal: 300x300px' },
-                { field: 'hero_image_url', title: 'Imagen Principal (1200x600px)', icon: '🌄', desc: 'Tamaño ideal: 1200x600px' },
-              ].map(({ field, title, icon, desc }) => (
-                <div key={field}>
-                  <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-                    <span style={labelStyle}>{icon} {title}</span>
-                    <div style={{ fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', color: '#999', marginTop: '0.25rem' }}>{desc}</div>
-                  </label>
-                  {form[field as keyof typeof form] ? (
-                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                      <img src={form[field as keyof typeof form] as string} alt={title} style={{ maxWidth: '100%', maxHeight: 150, borderRadius: 8 }} />
-                      <button type="button" onClick={() => removeImage(field as keyof ProfileData)} style={{
-                        position: 'absolute', top: '-12px', right: '-12px', width: '40px', height: '40px',
-                        background: '#dc2626', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', fontWeight: 700, fontSize: '1.2rem',
-                      }}>×</button>
-                    </div>
-                  ) : (
-                    <label style={{ display: 'block', padding: 'clamp(1.5rem, 3vw, 2rem)', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa' }}>
-                      <input type="file" accept="image/*" onChange={e => handleImageChange(e, field as any)} style={{ display: 'none' }} disabled={optimizingImages} />
-                      <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📤</div>
-                      <div style={{ fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', color: '#666' }}>{optimizingImages ? 'Optimizando...' : 'Sube imagen'}</div>
+                { field: 'logo_url', title: 'Logo (300x300px)', icon: '📌', desc: 'Tamaño ideal: 300x300px', required: true },
+                { field: 'hero_image_url', title: 'Imagen Principal (1200x600px)', icon: '🌄', desc: 'Tamaño ideal: 1200x600px', required: true },
+              ].map(({ field, title, icon, desc, required }) => {
+                const currentValue = form[field as keyof typeof form] as string
+                const isPlaceholder = currentValue && currentValue.includes('data:image/svg') // Es un placeholder
+                const isEmpty = !currentValue
+                
+                return (
+                  <div key={field}>
+                    <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+                      <span style={labelStyle}>{icon} {title} {required ? '🔴' : ''}</span>
+                      <div style={{ fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', color: '#999', marginTop: '0.25rem' }}>{desc}</div>
+                      {isPlaceholder && (
+                        <div style={{ fontSize: '0.7rem', color: '#ff9800', marginTop: '0.25rem', fontWeight: 700 }}>
+                          📦 Usando placeholder (sube tu imagen real)
+                        </div>
+                      )}
                     </label>
-                  )}
-                </div>
-              ))}
+                    {currentValue ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={currentValue} alt={title} style={{ maxWidth: '100%', maxHeight: 150, borderRadius: 8, border: isPlaceholder ? '2px dashed #ff9800' : 'none' }} />
+                        <button type="button" onClick={() => removeImage(field as keyof ProfileData)} style={{
+                          position: 'absolute', top: '-12px', right: '-12px', width: '40px', height: '40px',
+                          background: '#dc2626', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', fontWeight: 700, fontSize: '1.2rem',
+                        }}>×</button>
+                      </div>
+                    ) : (
+                      <label style={{ display: 'block', padding: 'clamp(1.5rem, 3vw, 2rem)', border: '2px dashed #dc2626', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fee2e2' }}>
+                        <input type="file" accept="image/*" onChange={e => handleImageChange(e, field as any)} style={{ display: 'none' }} disabled={optimizingImages} />
+                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📤</div>
+                        <div style={{ fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', color: '#991f1f', fontWeight: 700 }}>FALTA SUBIR ESTA IMAGEN 🔴</div>
+                        <div style={{ fontSize: 'clamp(0.65rem, 1.5vw, 0.75rem)', color: '#c41e1e', marginTop: '0.25rem' }}>{optimizingImages ? 'Optimizando...' : 'Clica para subir'}</div>
+                      </label>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </SectionCollapsible>
 
