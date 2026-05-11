@@ -63,11 +63,16 @@ interface ProfileData {
   color_primary?: string
   color_secondary?: string
   color_accent?: string
+  cif?: string
+  instagram?: string
+  tiktok?: string
+  facebook?: string
+  linkedin?: string
+  youtube?: string
 }
 
 const inputStyle = { padding: '.9rem', border: '1px solid #ddd', borderRadius: '8px', fontFamily: 'inherit', fontSize: '.9rem', width: '100%' }
 const labelStyle = { fontWeight: 700, fontSize: '.8rem', textTransform: 'uppercase' as const, color: '#2d5a27', marginBottom: '.5rem', display: 'block' }
-const sectionStyle = { padding: '2rem', background: '#f9f6f0', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #e5dcc9' }
 
 export default function MiNegocio() {
   const { user, loading: authLoading } = useAuth()
@@ -80,6 +85,25 @@ export default function MiNegocio() {
   const [message, setMessage] = useState('')
   const [form, setForm] = useState<Partial<ProfileData>>({})
   const [tradeConfig, setTradeConfig] = useState(getTradeConfig('emprendedor'))
+  
+  // ✅ SECCIONES COLAPSABLES
+  const [expandedSections, setExpandedSections] = useState({
+    basicos: true,
+    imagenes: false,
+    galeria: false,
+    hero: false,
+    servicios: false,
+    beneficios: false,
+    proceso: false,
+    testimonios: false,
+    faq: false,
+    redes: false,
+    whatsapp: false,
+  })
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
 
   const loadProfile = useCallback(async () => {
     if (!user) return
@@ -236,6 +260,28 @@ export default function MiNegocio() {
     setForm({ ...form, gallery_urls: gallery })
   }
 
+  // ✅ GENERAR TABLA WHATSAPP
+  const generarTablaWhatsApp = () => {
+    const datos = `
+  Hola, te escribo desde el formulario de la web
+📋 *Datos de contacto:*
+👤 Nombre: ${form.owner_name || '(No especificado)'}
+🏢 Negocio: ${form.business_name || '(No especificado)'}
+📧 Email: ${form.email || '(No especificado)'}
+📱 Teléfono: ${form.phone || '(No especificado)'}
+📍 Localidad: ${form.city || '(No especificado)'}
+
+¿Podemos agendar una cita?
+    `.trim()
+    return datos
+  }
+
+  const enviarWhatsApp = () => {
+    const mensaje = generarTablaWhatsApp()
+    const whatsappUrl = `https://wa.me/${form.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`
+    window.open(whatsappUrl, '_blank')
+  }
+
   if (loading) {
     return (
       <div className={styles.app}>
@@ -254,20 +300,20 @@ export default function MiNegocio() {
     <div className={styles.app}>
       <Sidebar active="/dashboard/mi-negocio" />
 
-      <main className={styles.main}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
+      <main className={styles.main} style={{ paddingBottom: '6rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '.5rem', color: '#1a2818' }}>Mi negocio</h1>
-            <p style={{ color: '#64748b', fontSize: '.95rem' }}>Personaliza tu landing profesional</p>
+            <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.2rem)', fontWeight: 700, marginBottom: '.5rem', color: '#1a2818' }}>Mi negocio</h1>
+            <p style={{ color: '#64748b', fontSize: 'clamp(.85rem, 2vw, 0.95rem)' }}>Personaliza tu landing profesional</p>
           </div>
           {form.slug && (
             <a href={`/${form.slug}`} target="_blank" rel="noopener noreferrer" style={{
-              padding: '.85rem 1.8rem',
+              padding: 'clamp(.6rem, 1.5vw, .85rem) clamp(1rem, 2vw, 1.8rem)',
               background: '#2d5a27',
               color: 'white',
               borderRadius: '8px',
               fontWeight: 700,
-              fontSize: '.85rem',
+              fontSize: 'clamp(.75rem, 2vw, .85rem)',
               textDecoration: 'none',
               cursor: 'pointer',
               transition: 'all .2s',
@@ -276,19 +322,19 @@ export default function MiNegocio() {
               gap: '.6rem',
               whiteSpace: 'nowrap',
             }} onMouseEnter={e => e.currentTarget.style.background = '#1f4620'} onMouseLeave={e => e.currentTarget.style.background = '#2d5a27'}>
-              👁️ Ver mi landing
+              👁️ Ver mi web
             </a>
           )}
         </div>
 
         {message && (
           <div style={{
-            padding: '1.1rem 1.5rem',
+            padding: 'clamp(.8rem, 2vw, 1.1rem) clamp(1rem, 2vw, 1.5rem)',
             borderRadius: 10,
             background: message.includes('✅') ? '#dcfce7' : message.includes('✨') ? '#fef3c7' : '#fee2e2',
             color: message.includes('✅') ? '#166534' : message.includes('✨') ? '#92400e' : '#991f1f',
             marginBottom: '2rem',
-            fontSize: '.9rem',
+            fontSize: 'clamp(.8rem, 2vw, .9rem)',
             fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
@@ -299,36 +345,14 @@ export default function MiNegocio() {
           </div>
         )}
 
-        {/* BOTÓN APLICAR PLANTILLA ARRIBA */}
-        <button onClick={aplicarPlantilla} style={{
-          padding: '1rem 2rem',
-          background: 'linear-gradient(135deg, #ce93d8, #ba68c8)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '10px',
-          fontWeight: 700,
-          fontSize: '.9rem',
-          cursor: 'pointer',
-          marginBottom: '2.5rem',
-          transition: 'all .3s',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '.75rem',
-        }} onMouseEnter={e => {
-          e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.boxShadow = '0 12px 32px rgba(206, 147, 216, 0.4)'
-        }} onMouseLeave={e => {
-          e.currentTarget.style.transform = 'none'
-          e.currentTarget.style.boxShadow = 'none'
-        }}>
-          ✨ Aplicar plantilla de {tradeConfig.name}
-        </button>
-
         <form onSubmit={save}>
-          {/* DATOS BÁSICOS */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>📋 Datos básicos</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          {/* ✅ DATOS BÁSICOS */}
+          <SectionCollapsible
+            title="📋 Datos básicos"
+            isOpen={expandedSections.basicos}
+            onClick={() => toggleSection('basicos')}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(250px, 100%, 300px), 1fr))', gap: '1.5rem' }}>
               <label>
                 <span style={labelStyle}>Nombre del negocio</span>
                 <input type="text" value={form.business_name || ''} onChange={e => setForm({ ...form, business_name: e.target.value })} style={inputStyle} />
@@ -338,14 +362,14 @@ export default function MiNegocio() {
                 <input type="text" value={form.owner_name || ''} onChange={e => setForm({ ...form, owner_name: e.target.value })} style={inputStyle} />
               </label>
               <label>
+                <span style={labelStyle}>CIF / NIF</span>
+                <input type="text" value={form.cif || ''} onChange={e => setForm({ ...form, cif: e.target.value })} style={inputStyle} placeholder="A12345678" />
+              </label>
+              <label>
                 <span style={labelStyle}>Oficio / Profesión</span>
                 <select value={form.trade || 'emprendedor'} onChange={e => handleTradeChange(e.target.value)} style={inputStyle}>
                   {Object.values(TRADES).map(t => <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>)}
                 </select>
-              </label>
-              <label>
-                <span style={labelStyle}>URL de tu landing (slug)</span>
-                <input type="text" value={form.slug || ''} onChange={e => setForm({ ...form, slug: e.target.value })} style={inputStyle} placeholder="miempresa" />
               </label>
               <label>
                 <span style={labelStyle}>Teléfono / WhatsApp</span>
@@ -368,13 +392,15 @@ export default function MiNegocio() {
                 <input type="number" value={form.experience_years || ''} onChange={e => setForm({ ...form, experience_years: e.target.value })} style={inputStyle} />
               </label>
             </div>
-          </div>
+          </SectionCollapsible>
 
-          {/* IMÁGENES */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>🖼️ Imágenes</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
-              {/* LOGO */}
+          {/* ✅ IMÁGENES */}
+          <SectionCollapsible
+            title="🖼️ Imágenes"
+            isOpen={expandedSections.imagenes}
+            onClick={() => toggleSection('imagenes')}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 100%, 300px), 1fr))', gap: '2rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '.75rem' }}>
                   <span style={labelStyle}>Logo</span>
@@ -395,21 +421,17 @@ export default function MiNegocio() {
                       cursor: 'pointer',
                       fontWeight: 700,
                       fontSize: '1.2rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                     }}>×</button>
                   </div>
                 ) : (
-                  <label style={{ display: 'block', padding: '2rem', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa', transition: 'all .3s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#2d5a27'} onMouseLeave={e => e.currentTarget.style.borderColor = '#ddd'}>
+                  <label style={{ display: 'block', padding: '2rem', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa' }}>
                     <input type="file" accept="image/*" onChange={e => handleImageChange(e, 'logo')} style={{ display: 'none' }} />
                     <div style={{ fontSize: '2.5rem', marginBottom: '.5rem' }}>🖼️</div>
-                    <div style={{ fontSize: '.85rem', color: '#666' }}>Sube tu logo</div>
+                    <div style={{ fontSize: 'clamp(.75rem, 2vw, .85rem)', color: '#666' }}>Sube tu logo</div>
                   </label>
                 )}
               </div>
 
-              {/* IMAGEN HERO */}
               <div>
                 <label style={{ display: 'block', marginBottom: '.75rem' }}>
                   <span style={labelStyle}>Imagen principal</span>
@@ -429,40 +451,39 @@ export default function MiNegocio() {
                       borderRadius: '50%',
                       cursor: 'pointer',
                       fontWeight: 700,
-                      fontSize: '1.2rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                     }}>×</button>
                   </div>
                 ) : (
-                  <label style={{ display: 'block', padding: '2rem', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa', transition: 'all .3s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#2d5a27'} onMouseLeave={e => e.currentTarget.style.borderColor = '#ddd'}>
+                  <label style={{ display: 'block', padding: '2rem', border: '2px dashed #ddd', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fafafa' }}>
                     <input type="file" accept="image/*" onChange={e => handleImageChange(e, 'hero')} style={{ display: 'none' }} />
                     <div style={{ fontSize: '2.5rem', marginBottom: '.5rem' }}>🌄</div>
-                    <div style={{ fontSize: '.85rem', color: '#666' }}>Sube imagen principal</div>
+                    <div style={{ fontSize: 'clamp(.75rem, 2vw, .85rem)', color: '#666' }}>Sube imagen principal</div>
                   </label>
                 )}
               </div>
             </div>
-          </div>
+          </SectionCollapsible>
 
-          {/* GALERÍA */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>📸 Galería de fotos</h2>
-            <label style={{ display: 'block', padding: '2.5rem', border: '2px dashed #2d5a27', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fef7f2', marginBottom: '2rem', transition: 'all .3s' }} onMouseEnter={e => { e.currentTarget.style.background = '#f9f6f0'; e.currentTarget.style.borderColor = '#1f4620' }} onMouseLeave={e => { e.currentTarget.style.background = '#fef7f2'; e.currentTarget.style.borderColor = '#2d5a27' }}>
+          {/* ✅ GALERÍA */}
+          <SectionCollapsible
+            title="📸 Galería de fotos"
+            isOpen={expandedSections.galeria}
+            onClick={() => toggleSection('galeria')}
+          >
+            <label style={{ display: 'block', padding: '2.5rem', border: '2px dashed #2d5a27', borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: '#fef7f2', marginBottom: '2rem' }}>
               <input type="file" multiple accept="image/*" onChange={e => Array.from(e.target.files || []).forEach(file => addGalleryImage(file))} style={{ display: 'none' }} />
               <div style={{ fontSize: '3rem', marginBottom: '.75rem' }}>📸</div>
-              <div style={{ fontWeight: 700, color: '#1a2818', marginBottom: '.3rem' }}>Sube tus fotos aquí</div>
-              <div style={{ fontSize: '.85rem', color: '#999' }}>O arrastra y suelta</div>
+              <div style={{ fontWeight: 700, color: '#1a2818', marginBottom: '.3rem', fontSize: 'clamp(.85rem, 2vw, 1rem)' }}>Sube tus fotos aquí</div>
+              <div style={{ fontSize: 'clamp(.75rem, 2vw, .85rem)', color: '#999' }}>O arrastra y suelta</div>
             </label>
 
             {form.gallery_urls && form.gallery_urls.length > 0 && (
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>Fotos cargadas ({form.gallery_urls.length})</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1.5rem' }}>
+                <h3 style={{ fontSize: 'clamp(.9rem, 2vw, 1rem)', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>Fotos cargadas ({form.gallery_urls.length})</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(120px, 25vw, 150px), 1fr))', gap: '1.5rem' }}>
                   {form.gallery_urls.map((url, i) => (
                     <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,.1)', aspectRatio: '1' }}>
-                      <img src={url} alt={`Foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <img src={url} alt={`Foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button type="button" onClick={() => removeGalleryImage(i)} style={{
                         position: 'absolute',
                         top: '.5rem',
@@ -476,45 +497,44 @@ export default function MiNegocio() {
                         cursor: 'pointer',
                         fontWeight: 700,
                         fontSize: '1.2rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all .2s',
-                        boxShadow: '0 2px 8px rgba(0,0,0,.2)',
-                      }} onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.transform = 'scale(1.1)' }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.95)'; e.currentTarget.style.transform = 'scale(1)' }}>
-                        ✕
-                      </button>
+                      }}>✕</button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </SectionCollapsible>
 
-          {/* HERO */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>⭐ Hero (Portada)</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-              <label>
+          {/* ✅ HERO */}
+          <SectionCollapsible
+            title="⭐ Hero (Portada)"
+            isOpen={expandedSections.hero}
+            onClick={() => toggleSection('hero')}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(250px, 100%, 300px), 1fr))', gap: '1.5rem' }}>
+              <label style={{ gridColumn: 'auto' }}>
                 <span style={labelStyle}>Titular principal</span>
                 <input type="text" value={form.headline || ''} onChange={e => setForm({ ...form, headline: e.target.value })} style={inputStyle} />
               </label>
-              <label>
+              <label style={{ gridColumn: 'auto' }}>
                 <span style={labelStyle}>Subtítulo</span>
                 <input type="text" value={form.subtitle || ''} onChange={e => setForm({ ...form, subtitle: e.target.value })} style={inputStyle} />
               </label>
-              <label style={{ gridColumn: '1/-1' }}>
+              <label style={{ gridColumn: '1 / -1' }}>
                 <span style={labelStyle}>Introducción</span>
-                <textarea value={form.intro_text || ''} onChange={e => setForm({ ...form, intro_text: e.target.value })} rows={3} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+                <textarea value={form.intro_text || ''} onChange={e => setForm({ ...form, intro_text: e.target.value })} rows={3} style={{...inputStyle, resize: 'vertical'}} />
               </label>
             </div>
-          </div>
+          </SectionCollapsible>
 
-          {/* SERVICIOS */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>🎯 Servicios (3)</h2>
+          {/* ✅ SERVICIOS */}
+          <SectionCollapsible
+            title="🎯 Servicios (3)"
+            isOpen={expandedSections.servicios}
+            onClick={() => toggleSection('servicios')}
+          >
             {[1, 2, 3].map(i => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: i < 3 ? '1px solid #e5dcc9' : 'none' }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(250px, 100%, 300px), 1fr))', gap: '1.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: i < 3 ? '1px solid #e5dcc9' : 'none' }}>
                 <label>
                   <span style={labelStyle}>Servicio {i}</span>
                   <input type="text" value={form[`service_${i}_title` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`service_${i}_title`]: e.target.value })} style={inputStyle} />
@@ -525,12 +545,15 @@ export default function MiNegocio() {
                 </label>
               </div>
             ))}
-          </div>
+          </SectionCollapsible>
 
-          {/* BENEFICIOS */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>💎 Beneficios (3)</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+          {/* ✅ BENEFICIOS */}
+          <SectionCollapsible
+            title="💎 Beneficios (3)"
+            isOpen={expandedSections.beneficios}
+            onClick={() => toggleSection('beneficios')}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 100%, 250px), 1fr))', gap: '1.5rem' }}>
               {[1, 2, 3].map(i => (
                 <label key={i}>
                   <span style={labelStyle}>Beneficio {i}</span>
@@ -538,13 +561,16 @@ export default function MiNegocio() {
                 </label>
               ))}
             </div>
-          </div>
+          </SectionCollapsible>
 
-          {/* PROCESO */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>🔄 Proceso (4 pasos)</h2>
+          {/* ✅ PROCESO */}
+          <SectionCollapsible
+            title="🔄 Proceso (4 pasos)"
+            isOpen={expandedSections.proceso}
+            onClick={() => toggleSection('proceso')}
+          >
             {[1, 2, 3, 4].map(i => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: i < 4 ? '1px solid #e5dcc9' : 'none' }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(250px, 100%, 300px), 1fr))', gap: '1.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: i < 4 ? '1px solid #e5dcc9' : 'none' }}>
                 <label>
                   <span style={labelStyle}>Paso {i} - Título</span>
                   <input type="text" value={form[`process_${i}_title` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`process_${i}_title`]: e.target.value })} style={inputStyle} />
@@ -555,14 +581,17 @@ export default function MiNegocio() {
                 </label>
               </div>
             ))}
-          </div>
+          </SectionCollapsible>
 
-          {/* TESTIMONIOS */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>⭐ Testimonios (3)</h2>
+          {/* ✅ TESTIMONIOS */}
+          <SectionCollapsible
+            title="⭐ Testimonios (3)"
+            isOpen={expandedSections.testimonios}
+            onClick={() => toggleSection('testimonios')}
+          >
             {[1, 2, 3].map(i => (
               <div key={i} style={{ paddingBottom: i < 3 ? '1.5rem' : '0', borderBottom: i < 3 ? '1px solid #e5dcc9' : 'none', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 100%, 250px), 1fr))', gap: '1.5rem', marginBottom: '1rem' }}>
                   <label>
                     <span style={labelStyle}>Nombre {i}</span>
                     <input type="text" value={form[`testimonial_${i}_name` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_name`]: e.target.value })} style={inputStyle} />
@@ -574,15 +603,18 @@ export default function MiNegocio() {
                 </div>
                 <label>
                   <span style={labelStyle}>Opinión</span>
-                  <textarea value={form[`testimonial_${i}_text` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_text`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+                  <textarea value={form[`testimonial_${i}_text` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`testimonial_${i}_text`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical'}} />
                 </label>
               </div>
             ))}
-          </div>
+          </SectionCollapsible>
 
-          {/* FAQ */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>❓ FAQ (4 preguntas)</h2>
+          {/* ✅ FAQ */}
+          <SectionCollapsible
+            title="❓ FAQ (4 preguntas)"
+            isOpen={expandedSections.faq}
+            onClick={() => toggleSection('faq')}
+          >
             {[1, 2, 3, 4].map(i => (
               <div key={i} style={{ paddingBottom: '1.5rem', borderBottom: i < 4 ? '1px solid #e5dcc9' : 'none', marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '1rem' }}>
@@ -591,20 +623,95 @@ export default function MiNegocio() {
                 </label>
                 <label>
                   <span style={labelStyle}>Respuesta</span>
-                  <textarea value={form[`faq_${i}_a` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`faq_${i}_a`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+                  <textarea value={form[`faq_${i}_a` as keyof ProfileData] as string || ''} onChange={e => setForm({ ...form, [`faq_${i}_a`]: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical'}} />
                 </label>
               </div>
             ))}
-          </div>
+          </SectionCollapsible>
 
-          {/* WHATSAPP Y COLORES */}
-          <div style={sectionStyle}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1a2818' }}>💬 WhatsApp y Colores</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
-              <label style={{ gridColumn: '1/-1' }}>
+          {/* ✅ REDES SOCIALES */}
+          <SectionCollapsible
+            title="📱 Redes sociales"
+            isOpen={expandedSections.redes}
+            onClick={() => toggleSection('redes')}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 100%, 250px), 1fr))', gap: '1.5rem' }}>
+              {[
+                { key: 'instagram', label: 'Instagram', icon: '📷' },
+                { key: 'tiktok', label: 'TikTok', icon: '🎵' },
+                { key: 'facebook', label: 'Facebook', icon: '👍' },
+                { key: 'linkedin', label: 'LinkedIn', icon: '💼' },
+                { key: 'youtube', label: 'YouTube', icon: '▶️' },
+              ].map(social => (
+                <label key={social.key}>
+                  <span style={labelStyle}>{social.icon} {social.label}</span>
+                  <input 
+                    type="text" 
+                    value={form[social.key as keyof ProfileData] as string || ''} 
+                    onChange={e => setForm({ ...form, [social.key]: e.target.value })} 
+                    style={inputStyle}
+                    placeholder={`Tu perfil de ${social.label}`}
+                  />
+                </label>
+              ))}
+            </div>
+          </SectionCollapsible>
+
+          {/* ✅ WHATSAPP */}
+          <SectionCollapsible
+            title="💬 Contacto directo (WhatsApp)"
+            isOpen={expandedSections.whatsapp}
+            onClick={() => toggleSection('whatsapp')}
+          >
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label>
                 <span style={labelStyle}>Mensaje WhatsApp predeterminado</span>
-                <textarea value={form.whatsapp_message || ''} onChange={e => setForm({ ...form, whatsapp_message: e.target.value })} rows={2} style={{...inputStyle, resize: 'vertical', padding: '.9rem'}} />
+                <textarea value={form.whatsapp_message || ''} onChange={e => setForm({ ...form, whatsapp_message: e.target.value })} rows={3} style={{...inputStyle, resize: 'vertical'}} placeholder="Personaliza el mensaje que enviarán tus clientes" />
               </label>
+            </div>
+
+            <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #bae6fd', marginBottom: '1.5rem' }}>
+              <h4 style={{ margin: '0 0 1rem 0', fontSize: 'clamp(.85rem, 2vw, .95rem)', fontWeight: 700, color: '#0369a1' }}>📋 Vista previa de la tabla de datos:</h4>
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', fontSize: 'clamp(.75rem, 2vw, .85rem)', lineHeight: '1.8', fontFamily: 'monospace', color: '#334155' }}>
+                <div>📋 <strong>Datos de contacto:</strong></div>
+                <div>👤 Nombre: {form.owner_name || '(No especificado)'}</div>
+                <div>🏢 Negocio: {form.business_name || '(No especificado)'}</div>
+                <div>📧 Email: {form.email || '(No especificado)'}</div>
+                <div>📱 Teléfono: {form.phone || '(No especificado)'}</div>
+                <div>📍 Localidad: {form.city || '(No especificado)'}</div>
+                <div style={{ marginTop: '0.5rem', fontWeight: 700 }}>¿Podemos agendar una cita?</div>
+              </div>
+            </div>
+
+            <button 
+              type="button"
+              onClick={enviarWhatsApp}
+              style={{
+                width: '100%',
+                padding: 'clamp(.7rem, 2vw, 1rem)',
+                background: '#25d366',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: 'clamp(.8rem, 2vw, .9rem)',
+                transition: 'all .2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#20ba5c'}
+              onMouseLeave={e => e.currentTarget.style.background = '#25d366'}
+            >
+              📱 Enviar tabla de prueba a WhatsApp
+            </button>
+          </SectionCollapsible>
+
+          {/* ✅ COLORES */}
+          <SectionCollapsible
+            title="🎨 Colores personalizados"
+            isOpen={expandedSections.whatsapp}
+            onClick={() => toggleSection('whatsapp')}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(150px, 100%, 180px), 1fr))', gap: '1.5rem' }}>
               <label>
                 <span style={labelStyle}>Color primario</span>
                 <input type="color" value={form.color_primary || tradeConfig.colors.primary} onChange={e => setForm({ ...form, color_primary: e.target.value })} style={{...inputStyle, height: '50px', cursor: 'pointer'}} />
@@ -618,44 +725,177 @@ export default function MiNegocio() {
                 <input type="color" value={form.color_accent || tradeConfig.colors.accent} onChange={e => setForm({ ...form, color_accent: e.target.value })} style={{...inputStyle, height: '50px', cursor: 'pointer'}} />
               </label>
             </div>
-          </div>
+          </SectionCollapsible>
+        </form>
+      </main>
 
-          {/* BOTONES FINALES */}
-          <div style={{ display: 'flex', gap: '1.5rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '2px solid #e5dcc9' }}>
-            <button type="button" onClick={() => setForm(profile!)} style={{
-              padding: '.9rem 2rem',
-              background: 'transparent',
-              color: '#666',
-              border: '1.5px solid #ddd',
-              borderRadius: '8px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all .3s',
-            }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#333' }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#666' }}>
-              Descartar cambios
-            </button>
-            <button type="submit" disabled={saving} style={{
-              flex: 1,
-              padding: '.9rem 2rem',
+      {/* ✅ BOTONES STICKY - RESPONSIVE */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: '#fff',
+        borderTop: '1px solid #e5ddcf',
+        padding: 'clamp(1rem, 2vw, 1.5rem)',
+        display: 'flex',
+        gap: 'clamp(.8rem, 2vw, 1.5rem)',
+        justifyContent: 'flex-end',
+        flexWrap: 'wrap',
+        zIndex: 100,
+        boxShadow: '0 -4px 12px rgba(0,0,0,.08)',
+      }}>
+        <button 
+          type="button"
+          onClick={aplicarPlantilla}
+          style={{
+            padding: 'clamp(.6rem, 1.5vw, .85rem) clamp(1rem, 2vw, 1.8rem)',
+            background: 'linear-gradient(135deg, #ce93d8, #ba68c8)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: 'clamp(.75rem, 2vw, .85rem)',
+            cursor: 'pointer',
+            transition: 'all .3s',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 12px 32px rgba(206, 147, 216, 0.4)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'none'
+            e.currentTarget.style.boxShadow = 'none'
+          }}
+        >
+          ✨ Aplicar plantilla
+        </button>
+
+        {form.slug && (
+          <a 
+            href={`/${form.slug}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              padding: 'clamp(.6rem, 1.5vw, .85rem) clamp(1rem, 2vw, 1.8rem)',
               background: '#2d5a27',
-              color: 'white',
+              color: '#fff',
               border: 'none',
               borderRadius: '8px',
               fontWeight: 700,
+              fontSize: 'clamp(.75rem, 2vw, .85rem)',
               cursor: 'pointer',
-              opacity: saving ? 0.7 : 1,
-              fontSize: '.95rem',
-              transition: 'all .3s',
-              display: 'flex',
+              textDecoration: 'none',
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '.75rem',
-            }} onMouseEnter={e => !saving && (e.currentTarget.style.background = '#1f4620')} onMouseLeave={e => e.currentTarget.style.background = '#2d5a27'}>
-              {saving ? '⏳ Guardando...' : '✅ Guardar todos los cambios'}
-            </button>
-          </div>
-        </form>
-      </main>
+              gap: '.6rem',
+              whiteSpace: 'nowrap',
+              transition: 'all .2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1f4620'}
+            onMouseLeave={e => e.currentTarget.style.background = '#2d5a27'}
+          >
+            👁️ Ver web
+          </a>
+        )}
+
+        <button 
+          type="submit"
+          onClick={(e) => {
+            const form = document.querySelector('form') as HTMLFormElement
+            form?.dispatchEvent(new Event('submit', { bubbles: true }))
+          }}
+          disabled={saving}
+          style={{
+            flex: '1',
+            minWidth: 'clamp(150px, 100%, 200px)',
+            padding: 'clamp(.6rem, 1.5vw, .85rem) clamp(1rem, 2vw, 1.8rem)',
+            background: '#0a0f14',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: 'clamp(.75rem, 2vw, .85rem)',
+            cursor: 'pointer',
+            opacity: saving ? 0.7 : 1,
+            transition: 'all .3s',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => !saving && (e.currentTarget.style.background = '#1c2b3a')}
+          onMouseLeave={e => e.currentTarget.style.background = '#0a0f14'}
+        >
+          {saving ? '⏳ Guardando...' : '✅ Guardar cambios'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ✅ COMPONENTE SECCIÓN COLAPSABLE
+function SectionCollapsible({ title, isOpen, onClick, children }: {
+  title: string
+  isOpen: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      background: '#f9f6f0',
+      borderRadius: '12px',
+      marginBottom: '2rem',
+      border: '1px solid #e5dcc9',
+      overflow: 'hidden',
+    }}>
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          width: '100%',
+          padding: 'clamp(1rem, 2vw, 1.5rem)',
+          background: '#f9f6f0',
+          border: 'none',
+          borderBottom: isOpen ? '1px solid #e5dcc9' : 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: 'clamp(.9rem, 2vw, 1.1rem)',
+          fontWeight: 700,
+          color: '#1a2818',
+          transition: 'all .2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = '#f3f0ea'}
+        onMouseLeave={e => e.currentTarget.style.background = '#f9f6f0'}
+      >
+        {title}
+        <span style={{
+          fontSize: '1.5rem',
+          transition: 'transform .3s',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+        }}>
+          ▼
+        </span>
+      </button>
+
+      {isOpen && (
+        <div style={{ padding: 'clamp(1rem, 2vw, 2rem)', animation: 'slideDown 0.3s ease' }}>
+          {children}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }

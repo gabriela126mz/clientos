@@ -61,7 +61,7 @@ export default function LoginPage() {
       return
     }
 
-    window.location.replace('/dashboard')
+    window.location.replace('/dashboard/')
   }
 
   return (
