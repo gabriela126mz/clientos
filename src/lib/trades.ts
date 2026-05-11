@@ -1,5 +1,3 @@
-// src/lib/trades.ts
-// CLIENTOS - CONFIGURACIÓN COMPLETA DE OFICIOS CON COLORES POR COLORMETRÍA
 
 export interface TradeConfig {
   id: string

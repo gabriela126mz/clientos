@@ -92,7 +92,7 @@ const generarQRAutomatico = async (profileData: any) => {
     setGenerando(true)
 
     const qrUniqueId = generarQRUnico()
-    const urlPublica = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://clientos.vercel.app'}/${profileData.slug}`
+    const urlPublica = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://emprenix.com'}/${profileData.slug}`
 
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=10&color=0a0f14&bgcolor=ffffff&data=${encodeURIComponent(urlPublica)}`
 
@@ -149,7 +149,7 @@ const generarQRAutomatico = async (profileData: any) => {
 }
   const actualizarQRPorCambioSlug = async (qrData: QRData, nuevoSlug: string) => {
   try {
-    const nuevaURL = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://clientos.vercel.app'}/${nuevoSlug}`
+    const nuevaURL = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://emprenix.com'}/${nuevoSlug}`
 
     await supabase
       .from('qr_codes')
@@ -192,7 +192,7 @@ const generarQRAutomatico = async (profileData: any) => {
 
     const link = document.createElement('a')
     link.href = qrData.qr_code
-    link.download = `qr-${qrData.slug_actual}-${profile?.business_name?.replace(/\s+/g, '-') || 'clientos'}.png`
+    link.download = `qr-${qrData.slug_actual}-${profile?.business_name?.replace(/\s+/g, '-') || 'emprenix'}.png`
     link.click()
   }
 
