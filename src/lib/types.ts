@@ -19,7 +19,7 @@ export interface Client {
 export interface Cita {
   id: string
   user_id: string
-  client_id?: string
+  client_id?: string | null
   client_name: string
   title: string
   date: string
@@ -42,7 +42,7 @@ export interface PresupuestoItem {
 export interface Presupuesto {
   id: string
   user_id: string
-  client_id?: string
+  client_id?: string | null
   client_name: string
   numero: string
   fecha: string
@@ -301,7 +301,7 @@ export function getOficioConfig(oficioId: string): OficioConfig {
 export interface Presupuesto {
   id: string
   user_id: string
-  client_id: string
+  client_id?: string | null
   numero: string
   fecha: string
   total: number
@@ -312,7 +312,7 @@ export interface Presupuesto {
 export interface Cita {
   id: string
   user_id: string
-  client_id: string
+  client_id?: string | null
   title: string
   date: string
   time: string

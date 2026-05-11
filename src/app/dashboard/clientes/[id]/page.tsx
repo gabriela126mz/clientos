@@ -323,22 +323,22 @@ export default function ClienteDetalle() {
 
       // TÍTULO
       doc.setFontSize(28)
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.text(titulo, 105, 20, { align: 'center' })
 
       // NÚMERO Y FECHA
       doc.setFontSize(10)
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.text(`Número: ${presupuestoCompleto.numero}`, 20, 35)
       doc.text(`Fecha: ${new Date(presupuestoCompleto.fecha).toLocaleDateString('es-ES')}`, 120, 35)
 
       // EMISOR Y CLIENTE EN LÍNEA
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.setFontSize(10)
       doc.text('EMISOR:', 20, 50)
       doc.text('CLIENTE:', 120, 50)
 
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       let yPos = 57
 
@@ -372,7 +372,7 @@ export default function ClienteDetalle() {
 
       // TABLA
       yPos = 100
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.setFontSize(9)
       doc.setFillColor(240, 240, 240)
       doc.rect(15, yPos - 5, 180, 7, 'F')
@@ -384,7 +384,7 @@ export default function ClienteDetalle() {
       doc.text('TOTAL', 170, yPos)
 
       yPos += 10
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
 
       // ✅ ITEMS DEL PRESUPUESTO
@@ -440,7 +440,7 @@ export default function ClienteDetalle() {
 
       const totalIVA = itemsTotal - totalBase
 
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.setFontSize(10)
       doc.text(`BASE: ${totalBase.toFixed(2)}€`, 130, yPos, { align: 'right' })
       yPos += 7
@@ -452,7 +452,7 @@ export default function ClienteDetalle() {
       doc.text(`TOTAL: ${itemsTotal.toFixed(2)}€`, 150, yPos, { align: 'right' })
 
       yPos += 18
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       doc.text(`Método: ${presupuestoCompleto.metodo_pago?.toUpperCase() || 'N/A'}`, 20, yPos)
 

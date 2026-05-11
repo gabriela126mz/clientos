@@ -87,27 +87,25 @@ export default function QR() {
     const random = Math.random().toString(36).substring(2, 9)
     return `qr-${timestamp}-${random}`
   }
+const generarQRAutomatico = async (profileData: any) => {
+  try {
+    setGenerando(true)
 
-  const generarQRAutomatico = async (profileData: any) => {
-    try {
-      setGenerando(true)
+    const qrUniqueId = generarQRUnico()
+    const urlPublica = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://clientos.vercel.app'}/${profileData.slug}`
 
-      const qrUniqueId = generarQRUnico()
-      const urlPublica = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://clientos.vercel.app'}/${profileData.slug}`
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=10&color=0a0f14&bgcolor=ffffff&data=${encodeURIComponent(urlPublica)}`
 
-      // Generar QR usando API pública (qrserver.com)
-      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=10&color=0a0f14&bgcolor=ffffff&data=${encodeURIComponent(urlPublica)}`
+    const response = await fetch(qrImageUrl)
+    const blob = await response.blob()
+    const reader = new FileReader()
 
-      // Convertir a base64
-      const response = await fetch(qrImageUrl)
-      const blob = await response.blob()
-      const reader = new FileReader()
+    reader.onloadend = async () => {
+      const base64 = reader.result as string
 
-      reader.onloadend = async () => {
-        const base64 = reader.result as string
-
-        // Guardar en BD
-        const { data, error } = await supabase.from('qr_codes').insert([
+      const { data: qrCreado, error } = await supabase
+        .from('qr_codes')
+        .insert([
           {
             user_id: user?.id,
             qr_unique_id: qrUniqueId,
@@ -119,69 +117,68 @@ export default function QR() {
             activo: true,
           },
         ])
+        .select('*')
+        .single()
 
-        if (error) {
-          console.error('Error guardando QR:', error)
-          return
-        }
-
-        // Registrar en historial
-        await supabase.from('qr_history').insert([
-          {
-            qr_id: data[0].id,
-            user_id: user?.id,
-            slug_anterior: null,
-            slug_nuevo: profileData.slug,
-            razon: 'creacion_inicial',
-          },
-        ])
-
-        setQrData(data[0])
+      if (error || !qrCreado) {
+        console.error('Error guardando QR:', error)
+        alert('❌ No se pudo crear el QR')
+        setGenerando(false)
+        return
       }
 
-      reader.readAsDataURL(blob)
-    } catch (err) {
-      console.error('Error generando QR:', err)
-    } finally {
-      setGenerando(false)
-    }
-  }
-
-  const actualizarQRPorCambioSlug = async (qrData: QRData, nuevoSlug: string) => {
-    try {
-      const nuevaURL = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://clientos.vercel.app'}/${nuevoSlug}`
-
-      // Actualizar QR
-      await supabase
-        .from('qr_codes')
-        .update({
-          url_actual: nuevaURL,
-          slug_actual: nuevoSlug,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', qrData.id)
-
-      // Registrar en historial
       await supabase.from('qr_history').insert([
         {
-          qr_id: qrData.id,
+          qr_id: qrCreado.id,
           user_id: user?.id,
-          slug_anterior: qrData.slug_actual,
-          slug_nuevo: nuevoSlug,
-          razon: 'cambio_slug',
+          slug_anterior: null,
+          slug_nuevo: profileData.slug,
+          razon: 'creacion_inicial',
         },
       ])
 
-      // Actualizar estado
-      setQrData({
-        ...qrData,
+      setQrData(qrCreado)
+      setGenerando(false)
+    }
+
+    reader.readAsDataURL(blob)
+  } catch (err) {
+    console.error('Error generando QR:', err)
+    setGenerando(false)
+  }
+}
+  const actualizarQRPorCambioSlug = async (qrData: QRData, nuevoSlug: string) => {
+  try {
+    const nuevaURL = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://clientos.vercel.app'}/${nuevoSlug}`
+
+    await supabase
+      .from('qr_codes')
+      .update({
         url_actual: nuevaURL,
         slug_actual: nuevoSlug,
+        updated_at: new Date().toISOString(),
       })
-    } catch (err) {
-      console.error('Error actualizando QR:', err)
-    }
+      .eq('id', qrData.id)
+
+    await supabase.from('qr_history').insert([
+      {
+        qr_id: qrData.id,
+        user_id: user?.id,
+        slug_anterior: qrData.slug_actual,
+        slug_nuevo: nuevoSlug,
+        razon: 'cambio_slug',
+      },
+    ])
+
+    setQrData({
+      ...qrData,
+      url_actual: nuevaURL,
+      slug_actual: nuevoSlug,
+    })
+  } catch (err) {
+    console.error('Error actualizando QR:', err)
   }
+}
 
   const copyLink = async () => {
     if (qrData) {
@@ -212,12 +209,12 @@ export default function QR() {
 
       // Título
       doc.setFontSize(18)
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.text(profile.business_name, 105, 20, { align: 'center' })
 
       // Subtítulo
       doc.setFontSize(11)
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'bold')
       doc.text('Código QR - Permanente e inmutable', 105, 28, { align: 'center' })
 
       // Línea separadora
@@ -229,21 +226,21 @@ export default function QR() {
 
       // URL
       doc.setFontSize(10)
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.text('URL:', 20, 160)
 
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       const urlLines = doc.splitTextToSize(qrData.url_actual, 170)
       doc.text(urlLines, 20, 167)
 
       // Info importante
       doc.setFontSize(9)
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.setTextColor(0, 102, 0)
       doc.text('ℹ️ INFORMACIÓN IMPORTANTE', 20, 200)
 
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.setTextColor(0)
       doc.setFontSize(8)
       const infoText = `Este QR es ÚNICO, PERMANENTE e INMUTABLE. Aunque cambies el nombre de tu negocio 10, 50 o 100 veces, este QR SEGUIRÁ FUNCIONANDO SIEMPRE y se redirigirá automáticamente a tu nueva landing.

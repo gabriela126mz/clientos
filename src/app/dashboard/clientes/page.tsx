@@ -109,7 +109,13 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'table'|'cards'>('cards')
 
-  const [showModal, setShowModal] = useState(false)
+  interface ModalState {
+  type: 'success' | 'error' | 'warning'
+  title: string
+  message: string
+}
+const [showModal, setShowModal] = useState<boolean>(false)
+
   const [editing, setEditing] = useState<Client | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -241,7 +247,7 @@ export default function ClientesPage() {
     }
 
     setEditing(null)
-    setShowModal(true)
+    const [showModal, setShowModal] = useState(false)
   }
 
   // ✅ EDITAR CLIENTE - RECUPERA DATOS DEL CLIENTE + LOCALSTORAGE SI EXISTE
