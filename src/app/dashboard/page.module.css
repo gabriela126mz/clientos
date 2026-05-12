@@ -664,3 +664,237 @@
   color: #1c2b3a;
   flex-shrink: 0;
 }
+
+/* =========================
+   RESPONSIVE SIDEBAR / APP MOBILE
+   Menú hamburguesa fijo + sidebar deslizable
+========================= */
+.mobileTopbar,
+.sidebarOverlay,
+.sidebarClose {
+  display: none;
+}
+
+.mobileTopbarTitleWrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mobileBrand {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0a0f14;
+  line-height: 1;
+}
+
+.mobileTitle {
+  margin-top: .18rem;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1;
+}
+
+.hamburger {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(10,15,20,.12);
+  background: #1c2b3a;
+  color: #fff;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 10px 24px rgba(10,15,20,.16);
+}
+
+.hamburger span {
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  display: block;
+}
+
+.sidebarHead {
+  display: block;
+}
+
+@media (max-width: 960px) {
+  .app {
+    display: block !important;
+    min-height: 100dvh;
+  }
+
+  .mobileTopbar {
+    position: sticky;
+    top: 0;
+    z-index: 1200;
+    display: flex !important;
+    align-items: center;
+    gap: .8rem;
+    height: 64px;
+    padding: .7rem 1rem;
+    background: rgba(245,243,239,.96);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid #e2ddd4;
+  }
+
+  .sidebarOverlay {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    background: rgba(10,15,20,.52);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .24s ease;
+  }
+
+  .sidebarOverlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1400;
+    width: min(82vw, 300px) !important;
+    height: 100dvh !important;
+    min-height: 100dvh;
+    padding: 1rem .75rem !important;
+    background: #1c2b3a;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    transform: translateX(-105%);
+    transition: transform .28s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 18px 0 60px rgba(0,0,0,.36);
+  }
+
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  .sidebarHead {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .sidebarHead .brand {
+    display: flex !important;
+    margin-bottom: 0 !important;
+    padding: 0 .35rem !important;
+  }
+
+  .sidebarClose {
+    display: grid !important;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.08);
+    color: #fff;
+    font-size: 1.55rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .sidebarClose:hover {
+    background: rgba(255,255,255,.14);
+  }
+
+  .sidebar .brand {
+    display: flex !important;
+  }
+
+  .sidebar .navSection {
+    display: block !important;
+  }
+
+  .sidebar .sbFoot {
+    display: block !important;
+  }
+
+  .sidebar .navBtn {
+    width: 100% !important;
+    min-height: 44px;
+    font-size: .9rem;
+  }
+
+  .main {
+    width: 100% !important;
+    padding: 1rem !important;
+    overflow-x: hidden !important;
+  }
+
+  .stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashGrid,
+  .dashMain {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ph {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .phActions {
+    width: 100%;
+  }
+
+  .phActions a,
+  .phActions button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobileTopbar {
+    height: 62px;
+    padding: .65rem .85rem;
+  }
+
+  .sidebar {
+    width: min(88vw, 320px) !important;
+  }
+
+  .phTitle {
+    font-size: 1.35rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .agendaItem {
+    gap: .75rem;
+  }
+}

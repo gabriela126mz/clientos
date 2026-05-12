@@ -20,6 +20,7 @@ const NAV = [
 
 export function Sidebar({ active }: { active: string }) {
   const { user, profile } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   let lastSection = ''
 
   const sessionName =
@@ -33,6 +34,9 @@ export function Sidebar({ active }: { active: string }) {
     (user?.user_metadata?.nombre_negocio as string | undefined) ||
     'Mi negocio'
 
+  const activeLabel = NAV.find(item => item.href === active)?.label || 'Panel'
+  const closeSidebar = () => setSidebarOpen(false)
+
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -40,41 +44,82 @@ export function Sidebar({ active }: { active: string }) {
   }
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.brand}>Emprenix <span className={styles.brandDot}></span></div>
+    <>
+      <header className={styles.mobileTopbar}>
+        <button
+          type="button"
+          className={styles.hamburger}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Abrir menú"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
 
-      <nav style={{ flex: 1 }}>
-        {NAV.map(item => {
-          const showSection = item.section && item.section !== lastSection
-          if (showSection) lastSection = item.section
+        <div className={styles.mobileTopbarTitleWrap}>
+          <div className={styles.mobileBrand}>Emprenix <span className={styles.brandDot}></span></div>
+          <div className={styles.mobileTitle}>{activeLabel}</div>
+        </div>
+      </header>
 
-          return (
-            <div key={item.href}>
-              {showSection && <div className={styles.navSection}>{item.section}</div>}
-              <Link href={item.href} className={`${styles.navBtn} ${active === item.href ? styles.active : ''}`}>
-                {item.icon}{item.label}
-              </Link>
-            </div>
-          )
-        })}
-      </nav>
+      <button
+        type="button"
+        aria-label="Cerrar menú"
+        className={`${styles.sidebarOverlay} ${sidebarOpen ? styles.show : ''}`}
+        onClick={closeSidebar}
+      />
 
-      <div className={styles.sbFoot}>
-        <div className={styles.userChip}>
-          <div className={styles.avatar}>
-            {(sessionName || 'U').charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className={styles.userName}>{sessionName}</div>
-            <div className={styles.userRole}>{businessName}</div>
-          </div>
+      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''}`}>
+        <div className={styles.sidebarHead}>
+          <div className={styles.brand}>Emprenix <span className={styles.brandDot}></span></div>
+          <button
+            type="button"
+            className={styles.sidebarClose}
+            onClick={closeSidebar}
+            aria-label="Cerrar menú"
+          >
+            ×
+          </button>
         </div>
 
-        <button className={styles.logoutBtn} onClick={handleLogout}>
-          Cerrar sesión
-        </button>
-      </div>
-    </aside>
+        <nav style={{ flex: 1 }}>
+          {NAV.map(item => {
+            const showSection = item.section && item.section !== lastSection
+            if (showSection) lastSection = item.section
+
+            return (
+              <div key={item.href}>
+                {showSection && <div className={styles.navSection}>{item.section}</div>}
+                <Link
+                  href={item.href}
+                  onClick={closeSidebar}
+                  className={`${styles.navBtn} ${active === item.href ? styles.active : ''}`}
+                >
+                  {item.icon}{item.label}
+                </Link>
+              </div>
+            )
+          })}
+        </nav>
+
+        <div className={styles.sbFoot}>
+          <div className={styles.userChip}>
+            <div className={styles.avatar}>
+              {(sessionName || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className={styles.userName}>{sessionName}</div>
+              <div className={styles.userRole}>{businessName}</div>
+            </div>
+          </div>
+
+          <button className={styles.logoutBtn} onClick={handleLogout}>
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
 
@@ -86,18 +131,9 @@ interface DashboardStats {
   presupuestosAbiertos: number
 }
 
-interface Presupuesto {
-  id: string
-  numero: string
-  fecha: string
-  total: number
-  estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado'
-}
-
 export default function Dashboard() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
-  const supabase = createClient()
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [citas, setCitas] = useState<Cita[]>([])
@@ -113,30 +149,41 @@ export default function Dashboard() {
     (user?.user_metadata?.nombre_negocio as string | undefined) ||
     'Mi negocio'
 
-  // ✅ SALUDO DINÁMICO SEGÚN LA HORA
   const getGreeting = (): string => {
-    const hour = new Date().getHours()
-    if (hour >= 5 && hour < 12) return 'Buenos días'
-    if (hour >= 12 && hour < 17) return 'Buenas tardes'
+    const hour = Number(
+      new Intl.DateTimeFormat('es-ES', {
+        hour: 'numeric',
+        hour12: false,
+      }).format(new Date())
+    )
+
+    if (hour >= 6 && hour < 12) return 'Buenos días'
+    if (hour >= 12 && hour < 20) return 'Buenas tardes'
     return 'Buenas noches'
   }
 
-  // ✅ CARGAR STATS CORRECTAMENTE
   useEffect(() => {
-    if (loading || !user) return
+    if (loading) return
+
+    if (!user) {
+      router.push('/')
+      return
+    }
 
     const loadStats = async () => {
       try {
-        // Clientes totales
+        const supabase = createClient()
+
         const { data: clientesData } = await supabase
           .from('clientes')
           .select('id')
           .eq('user_id', user.id)
 
-        // Citas esta semana
         const today = new Date()
         const weekStart = new Date(today)
+        weekStart.setHours(0, 0, 0, 0)
         weekStart.setDate(today.getDate() - today.getDay() + 1)
+
         const weekEnd = new Date(weekStart)
         weekEnd.setDate(weekStart.getDate() + 6)
 
@@ -148,21 +195,18 @@ export default function Dashboard() {
           .lte('date', weekEnd.toISOString().split('T')[0])
           .order('date', { ascending: true })
 
-        // Presupuestos ACEPTADOS (para "Cobrado este mes")
         const { data: presupuestosAceptados } = await supabase
           .from('presupuestos')
           .select('total, fecha')
           .eq('user_id', user.id)
           .eq('estado', 'aceptado')
 
-        // Presupuestos ENVIADOS (para "Por cobrar")
         const { data: presupuestosEnviados } = await supabase
           .from('presupuestos')
           .select('total')
           .eq('user_id', user.id)
           .eq('estado', 'enviado')
 
-        // Próximas 4 citas
         const { data: proximasCitasData } = await supabase
           .from('citas')
           .select('*')
@@ -171,28 +215,21 @@ export default function Dashboard() {
           .order('date', { ascending: true })
           .limit(4)
 
-        // CÁLCULOS:
-        // 1. Total clientes
         const totalClientes = clientesData?.length || 0
-
-        // 2. Citas esta semana
         const citasEstaSemana = citasData?.length || 0
 
-        // 3. Cobrado ESTE MES (presupuestos ACEPTADOS del mes actual)
         const thisMonth = new Date().getMonth() + 1
         const thisYear = new Date().getFullYear()
         const cobradoEsteMes = (presupuestosAceptados || []).reduce((acc, p) => {
-          const [y, m] = p.fecha.split('-')
+          const [y, m] = String(p.fecha).split('-')
           if (Number(y) === thisYear && Number(m) === thisMonth) {
             return acc + (Number(p.total) || 0)
           }
           return acc
         }, 0)
 
-        // 4. Por cobrar (TODOS los presupuestos ENVIADOS)
         const porCobrar = (presupuestosEnviados || []).reduce((acc, p) => acc + (Number(p.total) || 0), 0)
 
-        // 5. Presupuestos abiertos (NO aceptados ni rechazados)
         const { data: presupuestosAbiertoData } = await supabase
           .from('presupuestos')
           .select('id')
@@ -209,16 +246,15 @@ export default function Dashboard() {
           presupuestosAbiertos,
         })
 
-        setCitas(proximasCitasData || [])
+        setCitas((proximasCitasData || []) as Cita[])
       } catch (err) {
         console.error('Error cargando stats:', err)
       }
     }
 
     loadStats()
-  }, [user, loading, supabase])
+  }, [user, loading, router])
 
-  // Fechas para el calendario
   const today = new Date()
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const monthsFull = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -230,7 +266,6 @@ export default function Dashboard() {
 
   const eventDays = new Set(citas.map(c => new Date(c.date + 'T00:00:00').getDate()))
 
-  // ✅ CLICK EN DÍA DEL CALENDARIO → AGENDA
   const handleCalendarDayClick = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     router.push(`/dashboard/agenda?date=${dateStr}`)
@@ -264,12 +299,11 @@ export default function Dashboard() {
 
           <div className={styles.phActions}>
             <Link href="/dashboard/clientes" className={styles.btnGhost}>+ Cliente</Link>
-            <Link href="/dashboard/presupuestos" className={styles.btnGhost}>+ Presupuesto</Link>
+            <Link href="/dashboard/documentos" className={styles.btnGhost}>+ Presupuesto</Link>
             <Link href="/dashboard/agenda" className={styles.btnGold}>+ Agenda</Link>
           </div>
         </div>
 
-        {/* ✅ STATS RECALCULADOS */}
         <div className={styles.stats}>
           {[
             {
@@ -342,7 +376,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ✅ CALENDARIO CLICKEABLE */}
           <div className={styles.card}>
             <div className={styles.cardH}>
               <div className={styles.cardT}>{monthsFull[month]} {year}</div>
@@ -361,13 +394,10 @@ export default function Dashboard() {
                 const hasEvent = eventDays.has(d)
 
                 return (
-                  <div 
-                    key={d} 
+                  <div
+                    key={d}
                     className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}
                     onClick={() => handleCalendarDayClick(d)}
-                    style={{ cursor: 'pointer', transition: 'all 0.2s', borderRadius: '6px' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f0ea')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                   >
                     {d}
                     {hasEvent && <span className={styles.calDot} />}
