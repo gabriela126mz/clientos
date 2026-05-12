@@ -1,175 +1,104 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Sidebar } from '../../page'
 import styles from '../../page.module.css'
 import { useAuth } from '@/lib/context'
 import { createClient } from '@/lib/supabase/client'
-import type { Client } from '@/lib/types'
+
+interface ClienteDetalle {
+  id: string
+  user_id?: string
+  name: string
+  apellido?: string | null
+  email?: string | null
+  phone?: string | null
+  local?: string | null
+  address?: string | null
+  cif?: string | null
+  cp?: string | null
+  ciudad?: string | null
+  estado?: string | null
+  tags?: string | null
+  notes?: string | null
+  created_at?: string | null
+}
 
 interface Presupuesto {
   id: string
+  user_id?: string
+  client_id?: string | null
+  client_name?: string | null
   numero: string
   fecha: string
   total: number
-  estado: string
+  estado?: string | null
+  items?: any[] | null
+  notas?: string | null
+  cliente_apellido?: string | null
+  cliente_cif?: string | null
+  cliente_cp?: string | null
+  cliente_email?: string | null
+  cliente_telefono?: string | null
+  cliente_direccion?: string | null
+  cliente_ciudad?: string | null
+  metodo_pago?: string | null
 }
 
 interface Cita {
   id: string
+  user_id?: string
+  client_id?: string | null
+  client_name?: string | null
   title: string
   date: string
   time: string
-  place: string
-  notes: string
-  estado: string
+  place?: string | null
+  notes?: string | null
+  estado?: string | null
+  created_at?: string | null
 }
 
-interface Document {
-  id: string
-  nombre: string
-  tipo: string
-  url: string
-  fecha: string
-  size?: number
-}
-
-const getClientColor = (clientName: string): string => {
-  const colors = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#e11d48', '#854d0e']
-  let hash = 0
-  for (let i = 0; i < clientName.length; i++) {
-    hash = ((hash << 5) - hash) + clientName.charCodeAt(i)
-    hash = hash & hash
-  }
-  return colors[Math.abs(hash) % colors.length]
-}
-
-const ESTADO_STRIPE: Record<string,string> = { nuevo:'#2563eb', contactado:'#ea580c', cita:'#e8a820', completado:'#16a34a' }
-const ESTADO_BG: Record<string,string> = { nuevo:'#dbeafe', contactado:'#ffedd5', cita:'#fdf3d6', completado:'#dcfce7' }
-const ESTADO_COLOR: Record<string,string> = { nuevo:'#1d4ed8', contactado:'#c2410c', cita:'#92400e', completado:'#166534' }
-
-// ✅ VALIDACIONES EN TIEMPO REAL
-const validateCIF = (cif: string): { valid: boolean; message: string } => {
-  if (!cif.trim()) return { valid: true, message: '' }
-  if (cif.length !== 9) return { valid: false, message: 'CIF debe tener 9 caracteres' }
-  const cifRegex = /^[A-Z]{1}[0-9]{7}[0-9A-Z]{1}$/
-  return cifRegex.test(cif.toUpperCase())
-    ? { valid: true, message: '✅ CIF válido' }
-    : { valid: false, message: 'Formato: L0000000X' }
-}
-
-const validateCP = (cp: string): { valid: boolean; message: string } => {
-  if (!cp.trim()) return { valid: true, message: '' }
-  if (cp.length !== 5) return { valid: false, message: 'CP debe tener 5 dígitos' }
-  const cpRegex = /^[0-9]{5}$/
-  return cpRegex.test(cp)
-    ? { valid: true, message: '✅ CP válido' }
-    : { valid: false, message: 'Solo números, 5 dígitos' }
-}
-
-const validatePhone = (phone: string): { valid: boolean; message: string } => {
-  if (!phone.trim()) return { valid: true, message: '' }
-  const phoneRegex = /^[\d\s+\-()]{9,}$/
-  return phoneRegex.test(phone)
-    ? { valid: true, message: '✅ Teléfono válido' }
-    : { valid: false, message: 'Mínimo 9 dígitos' }
-}
-
-const validateEmail = (email: string): { valid: boolean; message: string } => {
-  if (!email.trim()) return { valid: true, message: '' }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-    ? { valid: true, message: '✅ Email válido' }
-    : { valid: false, message: 'Email inválido' }
-}
-
-const validateName = (name: string): { valid: boolean; message: string } => {
-  if (!name.trim()) return { valid: false, message: 'Nombre requerido' }
-  if (name.length > 100) return { valid: false, message: 'Máximo 100 caracteres' }
-  return { valid: true, message: '' }
-}
-
-const sanitizeInput = (input: string): string => {
-  return input.replace(/[<>]/g, '')
-}
-
-const STORAGE_EDIT = 'cliente_detalle_edit'
-
-const saveEditToStorage = (data: any) => {
-  try {
-    localStorage.setItem(STORAGE_EDIT, JSON.stringify(data))
-  } catch (e) {
-    console.error('localStorage:', e)
-  }
-}
-
-const loadEditFromStorage = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_EDIT)
-    return stored ? JSON.parse(stored) : null
-  } catch (e) {
-    console.error('localStorage:', e)
-    return null
-  }
-}
-
-const clearEditFromStorage = () => {
-  try {
-    localStorage.removeItem(STORAGE_EDIT)
-  } catch (e) {
-    console.error('localStorage:', e)
-  }
-}
-
-export default function ClienteDetalle() {
-  const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
-  const params = useParams()
-  const supabase = createClient()
-
-  const clientId = String(params.id)
-
-  const [cliente, setCliente] = useState<Client | null>(null)
-  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
-  const [citas, setCitas] = useState<Cita[]>([])
-  const [documentos, setDocumentos] = useState<Document[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  const [form, setForm] = useState({ name:'', phone:'', email:'', address:'', local:'', cif:'', cp:'', ciudad:'', estado:'nuevo', tags:'', notes:'' })
-  
-  const [validation, setValidation] = useState({
-    name: { valid: true, message: '' },
-    phone: { valid: true, message: '' },
-    email: { valid: true, message: '' },
-    cif: { valid: true, message: '' },
-    cp: { valid: true, message: '' }
+const fmt = (n: number) =>
+  Number(n || 0).toLocaleString('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   })
 
-  // ✅ VALIDAR MIENTRAS ESCRIBE
-  useEffect(() => {
-    setValidation({
-      name: validateName(form.name),
-      phone: validatePhone(form.phone),
-      email: validateEmail(form.email),
-      cif: validateCIF(form.cif),
-      cp: validateCP(form.cp)
-    })
-  }, [form.name, form.phone, form.email, form.cif, form.cp])
+const fmtDate = (value?: string | null) => {
+  if (!value) return '—'
+  try {
+    return new Date(`${value}T00:00:00`).toLocaleDateString('es-ES')
+  } catch {
+    return value
+  }
+}
 
-  // ✅ GUARDAR EN LOCALSTORAGE AUTOMÁTICAMENTE
-  useEffect(() => {
-    if (showEditModal) {
-      saveEditToStorage(form)
-    }
-  }, [form, showEditModal])
+const safeText = (value?: string | null) => (value && value.trim() ? value : '—')
 
-  const loadCliente = useCallback(async () => {
+export default function ClienteDetallePage() {
+  const params = useParams()
+  const router = useRouter()
+  const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
+
+  const clientId = useMemo(() => String(params?.id || ''), [params])
+
+  const [cliente, setCliente] = useState<ClienteDetalle | null>(null)
+  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
+  const [citas, setCitas] = useState<Cita[]>([])
+  const [loading, setLoading] = useState(true)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const loadData = useCallback(async () => {
     if (!user || !clientId) return
 
     setLoading(true)
+
     try {
       const { data: clienteData, error: clienteError } = await supabase
         .from('clientes')
@@ -178,59 +107,81 @@ export default function ClienteDetalle() {
         .eq('user_id', user.id)
         .single()
 
-      if (clienteError) {
+      if (clienteError || !clienteData) {
         console.error('Error cargando cliente:', clienteError)
+        setCliente(null)
+        setPresupuestos([])
+        setCitas([])
         return
       }
 
-      setCliente(clienteData as Client)
-      setForm({
-        name: clienteData.name||'',
-        phone: clienteData.phone||'',
-        email: clienteData.email||'',
-        address: clienteData.address||'',
-        local: clienteData.local||'',
-        cif: (clienteData as any).cif||'',
-        cp: (clienteData as any).cp||'',
-        ciudad: (clienteData as any).ciudad||'',
-        estado: clienteData.estado,
-        tags: clienteData.tags||'',
-        notes: clienteData.notes||''
-      })
+      setCliente(clienteData as ClienteDetalle)
 
-      const { data: presupuestosData } = await supabase
+      const { data: presupuestosData, error: presupuestosError } = await supabase
         .from('presupuestos')
         .select('*')
-        .eq('client_id', clientId)
         .eq('user_id', user.id)
+        .eq('client_id', clientId)
         .order('fecha', { ascending: false })
 
-      setPresupuestos(presupuestosData || [])
-
-      const { data: citasData, error: citasError } = await supabase
-        .from('citas')
-        .select('*')
-        .eq('client_id', clientId)
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-
-      if (citasError) {
-        console.error('Error cargando citas:', citasError)
+      if (presupuestosError) {
+        console.error('Error cargando presupuestos:', presupuestosError)
+        setPresupuestos([])
       } else {
-        console.log('✅ Citas cargadas:', citasData)
-        setCitas(citasData || [])
+        setPresupuestos((presupuestosData || []).map((doc: any) => ({
+          ...doc,
+          items: Array.isArray(doc.items) ? doc.items : [],
+        })))
       }
 
-      const { data: documentosData } = await supabase
-        .from('client_documents')
+      // ✅ CITAS DEL CLIENTE
+      // La relación correcta es citas.client_id -> clientes.id.
+      // Además dejamos un respaldo por client_name para citas antiguas que se hayan guardado sin client_id.
+      const { data: citasPorId, error: citasPorIdError } = await supabase
+        .from('citas')
         .select('*')
-        .eq('client_id', clientId)
         .eq('user_id', user.id)
-        .order('fecha', { ascending: false })
+        .eq('client_id', clientId)
+        .order('date', { ascending: true })
+        .order('time', { ascending: true })
 
-      setDocumentos(documentosData || [])
+      if (citasPorIdError) {
+        console.error('Error cargando citas por client_id:', citasPorIdError)
+      }
+
+      const nombreCliente = String(clienteData.name || '').trim()
+      const { data: citasPorNombre, error: citasPorNombreError } = nombreCliente
+        ? await supabase
+            .from('citas')
+            .select('*')
+            .eq('user_id', user.id)
+            .is('client_id', null)
+            .eq('client_name', nombreCliente)
+            .order('date', { ascending: true })
+            .order('time', { ascending: true })
+        : { data: [], error: null }
+
+      if (citasPorNombreError) {
+        console.error('Error cargando citas antiguas por nombre:', citasPorNombreError)
+      }
+
+      const citasUnicas = new Map<string, Cita>()
+      ;([...(citasPorId || []), ...(citasPorNombre || [])] as Cita[]).forEach((cita) => {
+        citasUnicas.set(cita.id, cita)
+      })
+
+      setCitas(
+        Array.from(citasUnicas.values()).sort((a, b) => {
+          const dateCompare = String(a.date || '').localeCompare(String(b.date || ''))
+          if (dateCompare !== 0) return dateCompare
+          return String(a.time || '').localeCompare(String(b.time || ''))
+        })
+      )
     } catch (err) {
-      console.error('Error:', err)
+      console.error('Error cargando detalle del cliente:', err)
+      setCliente(null)
+      setPresupuestos([])
+      setCitas([])
     } finally {
       setLoading(false)
     }
@@ -242,246 +193,156 @@ export default function ClienteDetalle() {
       router.push('/')
       return
     }
-    loadCliente()
-  }, [authLoading, user, loadCliente, router])
+    loadData()
+  }, [authLoading, user, router, loadData])
 
-  const openEdit = () => {
-    const stored = loadEditFromStorage()
-    if (stored) {
-      setForm(stored)
+  const calcularLinea = (item: any) => {
+    const cantidad = Number(item?.cantidad) || 0
+    const precio = Number(item?.precio) || 0
+    const descuento = Number(item?.descuento) || 0
+    const ivaPorcentaje = Number(item?.iva) || 0
+    const subtotal = cantidad * precio
+    const descuentoTotal = descuento > 0 ? (subtotal * descuento) / 100 : 0
+    const base = subtotal - descuentoTotal
+    const iva = (base * ivaPorcentaje) / 100
+    return { base, iva, total: base + iva }
+  }
+
+  const calcularTotalesDocumento = (doc: Presupuesto) => {
+    const items = Array.isArray(doc.items) ? doc.items : []
+
+    if (!items.length) {
+      return { base: Number(doc.total || 0), iva: 0, total: Number(doc.total || 0) }
     }
-    setShowEditModal(true)
+
+    return items.reduce(
+      (acc, item) => {
+        const calc = calcularLinea(item)
+        acc.base += calc.base
+        acc.iva += calc.iva
+        acc.total += calc.total
+        return acc
+      },
+      { base: 0, iva: 0, total: 0 }
+    )
   }
 
-  const closeEditModal = () => {
-    setShowEditModal(false)
+  const descargarPDF = async (docData: Presupuesto, type: 'presupuesto' | 'factura') => {
+    try {
+      setDownloadingId(`${type}-${docData.id}`)
+
+      const { jsPDF } = await import('jspdf')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const titulo = type === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'
+      const totales = calcularTotalesDocumento(docData)
+      const nombreCliente = `${docData.client_name || cliente?.name || ''} ${docData.cliente_apellido || cliente?.apellido || ''}`.trim()
+
+      pdf.setFontSize(26)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text(titulo, 105, 20, { align: 'center' })
+
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      pdf.text(`Número: ${docData.numero}`, 20, 35)
+      pdf.text(`Fecha: ${fmtDate(docData.fecha)}`, 130, 35)
+
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('CLIENTE:', 20, 52)
+      pdf.setFont('helvetica', 'normal')
+      pdf.text(nombreCliente || '—', 20, 60)
+      pdf.text(`CIF: ${docData.cliente_cif || cliente?.cif || '—'}`, 20, 66)
+      pdf.text(`Email: ${docData.cliente_email || cliente?.email || '—'}`, 20, 72)
+      pdf.text(`Tel: ${docData.cliente_telefono || cliente?.phone || '—'}`, 20, 78)
+      pdf.text(`Dir: ${docData.cliente_direccion || cliente?.address || '—'}`, 20, 84)
+      pdf.text(`${docData.cliente_cp || cliente?.cp || ''} ${docData.cliente_ciudad || cliente?.ciudad || ''}`.trim() || '—', 20, 90)
+
+      let y = 108
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFillColor(240, 240, 240)
+      pdf.rect(15, y - 6, 180, 8, 'F')
+      pdf.text('CONCEPTO', 18, y)
+      pdf.text('DESCRIPCIÓN', 52, y)
+      pdf.text('CANT.', 108, y, { align: 'center' })
+      pdf.text('PRECIO', 132, y, { align: 'right' })
+      pdf.text('IVA', 154, y, { align: 'center' })
+      pdf.text('TOTAL', 188, y, { align: 'right' })
+
+      y += 10
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(8)
+
+      const items = Array.isArray(docData.items) ? docData.items : []
+      items.forEach((item: any) => {
+        if (y > 270) {
+          pdf.addPage()
+          y = 20
+        }
+
+        const calc = calcularLinea(item)
+        pdf.text(String(item?.concepto || '').slice(0, 22), 18, y)
+        pdf.text(String(item?.descripcion || '').slice(0, 26), 52, y)
+        pdf.text(String(item?.cantidad || 0), 108, y, { align: 'center' })
+        pdf.text(`${Number(item?.precio || 0).toFixed(2)}€`, 132, y, { align: 'right' })
+        pdf.text(`${Number(item?.iva || 0)}%`, 154, y, { align: 'center' })
+        pdf.text(`${calc.total.toFixed(2)}€`, 188, y, { align: 'right' })
+        y += 7
+      })
+
+      y += 8
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(10)
+      pdf.text(`BASE: ${totales.base.toFixed(2)}€`, 188, y, { align: 'right' })
+      y += 7
+      pdf.text(`IVA: ${totales.iva.toFixed(2)}€`, 188, y, { align: 'right' })
+      y += 9
+      pdf.setFontSize(13)
+      pdf.text(`TOTAL: ${totales.total.toFixed(2)}€`, 188, y, { align: 'right' })
+
+      if (docData.notas) {
+        y += 14
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(9)
+        pdf.text('Observaciones:', 20, y)
+        y += 5
+        pdf.setFont('helvetica', 'normal')
+        const lines = pdf.splitTextToSize(docData.notas, 170)
+        pdf.text(lines, 20, y)
+      }
+
+      pdf.save(`${type}-${docData.numero}.pdf`)
+    } catch (err) {
+      console.error('Error descargando PDF:', err)
+      alert('❌ No se pudo descargar el PDF')
+    } finally {
+      setDownloadingId(null)
+    }
   }
 
-  const validateForm = (): boolean => {
-    return validation.name.valid && validation.phone.valid && validation.email.valid && validation.cif.valid && validation.cp.valid
-  }
+  const deleteClient = async () => {
+    if (!cliente || !user) return
+    if (!confirm(`¿Eliminar definitivamente a ${cliente.name}?`)) return
 
-  const saveCliente = async () => {
-    if (!user || !cliente) return
-    
-    if (!validateForm()) {
-      alert('⚠️ Corrige los errores antes de guardar')
+    const { error } = await supabase
+      .from('clientes')
+      .delete()
+      .eq('id', cliente.id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      alert('❌ Error eliminando cliente: ' + error.message)
       return
     }
 
-    setSaving(true)
-    
-    try {
-      const { error } = await supabase
-        .from('clientes')
-        .update({
-          name: sanitizeInput(form.name.trim()),
-          phone: form.phone.trim(),
-          email: form.email.trim(),
-          address: sanitizeInput(form.address.trim()),
-          local: sanitizeInput(form.local.trim()),
-          cif: form.cif.trim().toUpperCase(),
-          cp: form.cp.trim(),
-          ciudad: sanitizeInput(form.ciudad.trim()),
-          estado: form.estado,
-          tags: sanitizeInput(form.tags.trim()),
-          notes: sanitizeInput(form.notes.trim())
-        })
-        .eq('id', clientId)
-
-      if (error) throw error
-      
-      clearEditFromStorage()
-      setShowEditModal(false)
-      await loadCliente()
-      alert('✅ Cliente actualizado')
-    } catch (err) {
-      console.error('Error:', err)
-      alert('❌ Error al actualizar cliente')
-    } finally {
-      setSaving(false)
-    }
+    router.push('/dashboard/clientes')
   }
 
-  const descargarPDF = async (presupuesto: Presupuesto, type: 'presupuesto' | 'factura') => {
-    try {
-      // ✅ TRAER DETALLES COMPLETOS DEL PRESUPUESTO
-      const { data: presupuestoCompleto } = await supabase
-        .from('presupuestos')
-        .select('*')
-        .eq('id', presupuesto.id)
-        .single()
-
-      if (!presupuestoCompleto) {
-        alert('❌ No se pudo cargar el presupuesto')
-        return
-      }
-
-      const { jsPDF } = await import('jspdf')
-      const doc = new jsPDF('p', 'mm', 'a4')
-      const titulo = type === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'
-
-      // TÍTULO
-      doc.setFontSize(28)
-      doc.setFont('helvetica', 'bold')
-      doc.text(titulo, 105, 20, { align: 'center' })
-
-      // NÚMERO Y FECHA
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.text(`Número: ${presupuestoCompleto.numero}`, 20, 35)
-      doc.text(`Fecha: ${new Date(presupuestoCompleto.fecha).toLocaleDateString('es-ES')}`, 120, 35)
-
-      // EMISOR Y CLIENTE EN LÍNEA
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
-      doc.text('EMISOR:', 20, 50)
-      doc.text('CLIENTE:', 120, 50)
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      let yPos = 57
-
-      // DATOS EMISOR (placeholder, ya que no tenemos perfil en esta página)
-      doc.text('Mi Empresa', 20, yPos)
-      doc.text(`${presupuestoCompleto.client_name}`, 120, yPos)
-      yPos += 5
-
-      doc.text('Propietario', 20, yPos)
-      doc.text(`CIF: ${presupuestoCompleto.cliente_cif || '—'}`, 120, yPos)
-      yPos += 5
-
-      doc.text('CIF: 12345678X', 20, yPos)
-      doc.text(`CP: ${presupuestoCompleto.cliente_cp || '—'}`, 120, yPos)
-      yPos += 5
-
-      doc.text('Email: info@empresa.com', 20, yPos)
-      doc.text(`Email: ${presupuestoCompleto.cliente_email || '—'}`, 120, yPos)
-      yPos += 5
-
-      doc.text('Tel: 123456789', 20, yPos)
-      doc.text(`Tel: ${presupuestoCompleto.cliente_telefono || '—'}`, 120, yPos)
-      yPos += 5
-
-      doc.text('Dir: Calle Principal, 123', 20, yPos)
-      doc.text(`Dir: ${presupuestoCompleto.cliente_direccion || '—'}`, 120, yPos)
-      yPos += 5
-
-      doc.text('28000 Madrid', 20, yPos)
-      doc.text(`${presupuestoCompleto.cliente_ciudad || '—'}`, 120, yPos)
-
-      // TABLA
-      yPos = 100
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
-      doc.setFillColor(240, 240, 240)
-      doc.rect(15, yPos - 5, 180, 7, 'F')
-      doc.text('CONCEPTO', 18, yPos)
-      doc.text('DESCRIPCIÓN', 50, yPos)
-      doc.text('CANTIDAD', 105, yPos)
-      doc.text('PRECIO', 130, yPos)
-      doc.text('IVA', 150, yPos)
-      doc.text('TOTAL', 170, yPos)
-
-      yPos += 10
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-
-      // ✅ ITEMS DEL PRESUPUESTO
-      const items = Array.isArray(presupuestoCompleto.items) ? presupuestoCompleto.items : []
-      
-      items.forEach((item: any) => {
-        if (yPos > 270) {
-          doc.addPage()
-          yPos = 20
-        }
-
-        const cant = Number(item.cantidad) || 0
-        const prec = Number(item.precio) || 0
-        const subtotal = cant * prec
-        const desc = Number(item.descuento) || 0
-        const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
-        const base = subtotal - descuentoLinea
-        const iv = Number(item.iva) || 0
-        const iva = (base * iv) / 100
-        const total = base + iva
-
-        doc.text(item.concepto?.substring(0, 18) || '', 18, yPos)
-        doc.text(item.descripcion?.substring(0, 18) || '', 50, yPos)
-        doc.text(String(cant), 105, yPos, { align: 'center' })
-        doc.text(`${prec.toFixed(2)}€`, 130, yPos, { align: 'right' })
-        doc.text(`${iv}%`, 150, yPos, { align: 'center' })
-        doc.text(`${total.toFixed(2)}€`, 170, yPos, { align: 'right' })
-        yPos += 7
-      })
-
-      // TOTALES
-      yPos += 10
-      const itemsTotal = items.reduce((acc: number, item: any) => {
-        const cant = Number(item.cantidad) || 0
-        const prec = Number(item.precio) || 0
-        const subtotal = cant * prec
-        const desc = Number(item.descuento) || 0
-        const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
-        const base = subtotal - descuentoLinea
-        const iv = Number(item.iva) || 0
-        const iva = (base * iv) / 100
-        return acc + base + iva
-      }, 0)
-
-      const totalBase = items.reduce((acc: number, item: any) => {
-        const cant = Number(item.cantidad) || 0
-        const prec = Number(item.precio) || 0
-        const subtotal = cant * prec
-        const desc = Number(item.descuento) || 0
-        const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
-        return acc + (subtotal - descuentoLinea)
-      }, 0)
-
-      const totalIVA = itemsTotal - totalBase
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
-      doc.text(`BASE: ${totalBase.toFixed(2)}€`, 130, yPos, { align: 'right' })
-      yPos += 7
-      doc.text(`IVA 21%: ${totalIVA.toFixed(2)}€`, 130, yPos, { align: 'right' })
-      yPos += 10
-      doc.setFontSize(12)
-      doc.setFillColor(255, 255, 255)
-      doc.rect(120, yPos - 6, 60, 10, 'S')
-      doc.text(`TOTAL: ${itemsTotal.toFixed(2)}€`, 150, yPos, { align: 'right' })
-
-      yPos += 18
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.text(`Método: ${presupuestoCompleto.metodo_pago?.toUpperCase() || 'N/A'}`, 20, yPos)
-
-      if (presupuestoCompleto.notas) {
-        yPos += 10
-        doc.text('Observaciones:', 20, yPos)
-        yPos += 5
-        doc.setFontSize(8)
-        const notasLines = doc.splitTextToSize(presupuestoCompleto.notas, 170)
-        doc.text(notasLines, 20, yPos)
-      }
-
-      doc.save(`${type}-${presupuestoCompleto.numero}.pdf`)
-      alert('✅ PDF descargado')
-    } catch (err) {
-      console.error('Error:', err)
-      alert('❌ Error al descargar PDF')
-    }
-  }
-
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className={styles.app}>
         <Sidebar active="/dashboard/clientes" />
         <main className={styles.main}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #e2ddd4', borderTopColor: '#2d5a27', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <p style={{ color: '#64748b', fontSize: '.875rem' }}>Cargando cliente…</p>
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', color: '#64748b' }}>
+            Cargando cliente…
           </div>
         </main>
       </div>
@@ -493,202 +354,389 @@ export default function ClienteDetalle() {
       <div className={styles.app}>
         <Sidebar active="/dashboard/clientes" />
         <main className={styles.main}>
-          <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '.5rem', color: '#1c2b3a' }}>Cliente no encontrado</div>
-            <button onClick={() => router.push('/dashboard/clientes')} style={{ marginTop: '1rem', padding: '.65rem 1.1rem', background: '#0a0f14', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.84rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Volver a clientes</button>
+          <Link href="/dashboard/clientes" style={{ color: '#ef4444', fontSize: '.9rem', textDecoration: 'none' }}>← Clientes</Link>
+          <div className={styles.card} style={{ marginTop: '1rem', padding: '2rem' }}>
+            <h1 style={{ margin: 0 }}>Cliente no encontrado</h1>
+            <p style={{ color: '#64748b' }}>No existe o no pertenece a tu cuenta.</p>
           </div>
         </main>
       </div>
     )
   }
 
-  const color = getClientColor(cliente.name)
+  const initials = `${cliente.name?.[0] || 'C'}${cliente.apellido?.[0] || ''}`.toUpperCase()
 
   return (
     <div className={styles.app}>
       <Sidebar active="/dashboard/clientes" />
 
-      <main className={styles.main} style={{ background: '#f6f2ea', minHeight: '100vh', padding: 'clamp(1rem, 2vw, 1.5rem)' }}>
-        <button onClick={() => router.push('/dashboard/clientes')} style={{ color: '#d96b5b', textDecoration: 'none', fontSize: 'clamp(0.85rem, 2vw, 0.95rem)', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'inherit' }}>← Clientes</button>
+      <main className={styles.main}>
+        <style jsx>{`
+          .detailTop {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+          }
+          .identity {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 0;
+          }
+          .avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: #f8d9bf;
+            color: #0f172a;
+            font-weight: 900;
+            flex: 0 0 auto;
+          }
+          .title {
+            font-size: clamp(2rem, 6vw, 3.1rem);
+            line-height: 1;
+            margin: 0;
+            font-family: Georgia, serif;
+            word-break: break-word;
+          }
+          .actions {
+            display: flex;
+            gap: .55rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, .95fr);
+            gap: 1.25rem;
+            align-items: start;
+          }
+          .sectionCard {
+            background: white;
+            border: 1px solid #ded7ca;
+            border-radius: 8px;
+            padding: 1rem;
+          }
+          .sectionTitle {
+            margin: 0 0 1rem;
+            font-family: Georgia, serif;
+            font-size: 1.35rem;
+          }
+          .miniTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .86rem;
+          }
+          .miniTable th {
+            text-align: left;
+            padding: .75rem .6rem;
+            background: #f3f0ea;
+            color: #64748b;
+            font-size: .72rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+          }
+          .miniTable td {
+            padding: .8rem .6rem;
+            border-bottom: 1px solid #eee7dc;
+            vertical-align: middle;
+          }
+          .pdfBtns {
+            display: flex;
+            gap: .35rem;
+            flex-wrap: wrap;
+          }
+          .tinyBtn {
+            border: 0;
+            border-radius: 5px;
+            padding: .38rem .55rem;
+            font-size: .72rem;
+            font-weight: 800;
+            cursor: pointer;
+            color: white;
+          }
+          .citaList {
+            display: grid;
+            gap: .75rem;
+          }
+          .citaItem {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: .8rem;
+            align-items: start;
+            padding: .9rem;
+            border: 1px solid #eee7dc;
+            border-radius: 10px;
+            background: #fff;
+          }
+          .citaDate {
+            min-width: 74px;
+            text-align: center;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: .55rem .4rem;
+          }
+          .citaDate strong {
+            display: block;
+            font-size: 1.05rem;
+            color: #0f172a;
+          }
+          .citaDate span {
+            font-size: .68rem;
+            color: #64748b;
+            font-weight: 800;
+            text-transform: uppercase;
+          }
+          .citaTitle {
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: .28rem;
+          }
+          .citaMeta {
+            color: #64748b;
+            font-size: .82rem;
+            line-height: 1.55;
+          }
+          .badge {
+            font-size: .68rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: .28rem .55rem;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            white-space: nowrap;
+          }
+          .infoGrid {
+            display: grid;
+            gap: .95rem;
+          }
+          .infoLabel {
+            display: block;
+            font-size: .74rem;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: .24rem;
+          }
+          .infoValue {
+            color: #111827;
+            word-break: break-word;
+          }
+          .deleteBtn {
+            width: 100%;
+            margin-top: 1.3rem;
+            border: 0;
+            border-radius: 8px;
+            padding: .8rem 1rem;
+            background: #fee2e2;
+            color: #991b1b;
+            font-weight: 800;
+            cursor: pointer;
+          }
+          .empty {
+            color: #64748b;
+            font-size: .9rem;
+            padding: .75rem 0;
+          }
+          @media (max-width: 900px) {
+            .detailTop {
+              align-items: flex-start;
+              flex-direction: column;
+            }
+            .actions {
+              width: 100%;
+              justify-content: stretch;
+            }
+            .actions :global(a),
+            .actions button {
+              flex: 1 1 auto;
+              text-align: center;
+            }
+            .grid {
+              grid-template-columns: 1fr;
+            }
+          }
+          @media (max-width: 560px) {
+            .miniTable thead {
+              display: none;
+            }
+            .miniTable,
+            .miniTable tbody,
+            .miniTable tr,
+            .miniTable td {
+              display: block;
+              width: 100%;
+            }
+            .miniTable tr {
+              border: 1px solid #eee7dc;
+              border-radius: 10px;
+              padding: .7rem;
+              margin-bottom: .75rem;
+            }
+            .miniTable td {
+              border: 0;
+              padding: .32rem 0;
+            }
+            .miniTable td::before {
+              content: attr(data-label);
+              display: block;
+              color: #64748b;
+              font-size: .68rem;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+              font-weight: 900;
+              margin-bottom: .1rem;
+            }
+            .citaItem {
+              grid-template-columns: 1fr;
+            }
+            .citaDate {
+              width: 100%;
+              display: flex;
+              justify-content: center;
+              gap: .35rem;
+              align-items: baseline;
+            }
+            .badge {
+              justify-self: start;
+            }
+          }
+        `}</style>
 
-        <section style={{ display: 'flex', justifyContent: 'space-between', gap: 'clamp(0.5rem, 2vw, 1.5rem)', alignItems: 'flex-start', marginTop: 'clamp(1rem, 2vw, 1.5rem)', marginBottom: 'clamp(1rem, 2vw, 2rem)', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', minWidth: '200px' }}>
-            <div style={{ width: 'clamp(48px, 8vw, 64px)', height: 'clamp(48px, 8vw, 64px)', borderRadius: '16px', background: color, opacity: 0.2, flexShrink: 0 }} />
+        <Link href="/dashboard/clientes" style={{ display: 'inline-block', color: '#ef4444', fontSize: '.9rem', marginBottom: '1rem', textDecoration: 'none' }}>
+          ← Clientes
+        </Link>
+
+        <div className="detailTop">
+          <div className="identity">
+            <div className="avatar">{initials}</div>
             <div>
-              <h1 style={{ margin: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1.5rem, 5vw, 2.6rem)', lineHeight: 1.1, color: '#071018' }}>{cliente.name}</h1>
+              <h1 className="title">{cliente.name}{cliente.apellido ? ` ${cliente.apellido}` : ''}</h1>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 'clamp(0.4rem, 1vw, 0.7rem)', flexWrap: 'wrap' }}>
-            <button onClick={openEdit} style={{ padding: 'clamp(0.4rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.2rem)', borderRadius: '6px', border: '1px solid #ddd6c9', background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', whiteSpace: 'nowrap' }}>✎ Editar</button>
-            <button onClick={() => router.push('/dashboard/documentos')} style={{ padding: 'clamp(0.4rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.2rem)', borderRadius: '6px', border: 'none', background: '#0b1820', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', whiteSpace: 'nowrap' }}>+ Documentos</button>
-            <button onClick={() => router.push('/dashboard/agenda')} style={{ padding: 'clamp(0.4rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.2rem)', borderRadius: '6px', border: 'none', background: '#2d5a27', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', whiteSpace: 'nowrap' }}>📅 Agenda</button>
+          <div className="actions">
+            <button className={styles.btnGhost} onClick={() => router.push(`/dashboard/clientes?edit=${cliente.id}`)} style={{ width: 'auto', height: 40, padding: '0 1rem' }}>
+              ✎ Editar
+            </button>
+            <button className={styles.btnDark} onClick={() => router.push(`/dashboard/documentos?client_id=${cliente.id}`)} style={{ width: 'auto', height: 40, padding: '0 1rem' }}>
+              + Documentos
+            </button>
+            <button className={styles.btnDark} onClick={() => router.push(`/dashboard/agenda?client_id=${cliente.id}`)} style={{ width: 'auto', height: 40, padding: '0 1rem', background: '#166534' }}>
+              📅 Agenda
+            </button>
           </div>
-        </section>
+        </div>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(250px, 80vw, 300px), 1fr))', gap: 'clamp(1rem, 2vw, 1.5rem)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.8rem, 2vw, 1.2rem)' }}>
-            {/* PRESUPUESTOS */}
-            <div style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: 'clamp(1rem, 2vw, 1.5rem)', overflow: 'auto' }}>
-              <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1rem, 3vw, 1.3rem)' }}>Presupuestos</h2>
+        <div className="grid">
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <section className="sectionCard">
+              <h2 className="sectionTitle">Presupuestos</h2>
+
               {presupuestos.length > 0 ? (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>
-                    <thead>
-                      <tr style={{ background: '#f3f0ea' }}>
-                        <th style={{ textAlign: 'left', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>N°</th>
-                        <th style={{ textAlign: 'left', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>Fecha</th>
-                        <th style={{ textAlign: 'left', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>Importe</th>
-                        <th style={{ textAlign: 'center', padding: 'clamp(0.4rem, 1vw, 0.7rem)', color: '#64748b', fontWeight: 700 }}>PDF</th>
+                <table className="miniTable">
+                  <thead>
+                    <tr>
+                      <th>Número</th>
+                      <th>Fecha</th>
+                      <th>Importe</th>
+                      <th>Descargar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {presupuestos.map((doc) => (
+                      <tr key={doc.id}>
+                        <td data-label="Número"><strong>{doc.numero}</strong></td>
+                        <td data-label="Fecha">{fmtDate(doc.fecha)}</td>
+                        <td data-label="Importe"><strong>{fmt(doc.total)}</strong></td>
+                        <td data-label="Descargar">
+                          <div className="pdfBtns">
+                            <button
+                              className="tinyBtn"
+                              style={{ background: '#3b82f6' }}
+                              onClick={() => descargarPDF(doc, 'presupuesto')}
+                              disabled={downloadingId === `presupuesto-${doc.id}`}
+                            >
+                              ↓ Pres.
+                            </button>
+                            <button
+                              className="tinyBtn"
+                              style={{ background: '#8b5cf6' }}
+                              onClick={() => descargarPDF(doc, 'factura')}
+                              disabled={downloadingId === `factura-${doc.id}`}
+                            >
+                              ↓ Fact.
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {presupuestos.map(p => (
-                        <tr key={p.id} style={{ borderBottom: '1px solid #e5ddcf', borderLeft: `4px solid ${ESTADO_STRIPE[p.estado]}` }}>
-                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', fontWeight: 800, fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>{p.numero}</td>
-                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>{new Date(p.fecha).toLocaleDateString('es-ES')}</td>
-                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', fontWeight: 700, fontSize: 'clamp(0.65rem, 2vw, 0.8rem)' }}>{p.total.toFixed(2)}€</td>
-                          <td style={{ padding: 'clamp(0.5rem, 1.5vw, 0.9rem)', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                              <button onClick={() => descargarPDF(p, 'presupuesto')} title="Presupuesto" style={{ padding: '0.25rem 0.4rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 4, fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📄</button>
-                              <button onClick={() => descargarPDF(p, 'factura')} title="Factura" style={{ padding: '0.25rem 0.4rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 4, fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🧾</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               ) : (
-                <p style={{ color: '#64748b', margin: '1rem 0 0 0', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)' }}>Sin presupuestos. <button onClick={() => router.push('/dashboard/presupuestos')} style={{ color: '#2d5a27', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600, fontFamily: 'inherit' }}>Ver panel</button></p>
+                <div className="empty">Sin presupuestos creados para este cliente.</div>
               )}
-            </div>
+            </section>
 
-            {/* CITAS */}
-            <div style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: 'clamp(1rem, 2vw, 1.5rem)', overflow: 'auto' }}>
-              <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1rem, 3vw, 1.3rem)' }}>Visitas y citas</h2>
+            <section className="sectionCard">
+              <h2 className="sectionTitle">Citas</h2>
+
               {citas.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.6rem, 1.5vw, 1rem)', maxHeight: '400px', overflowY: 'auto' }}>
-                  {citas.map(c => (
-                    <div key={c.id} style={{ paddingBottom: 'clamp(0.6rem, 1.5vw, 1rem)', borderBottom: '1px solid #e5ddcf', borderLeft: `4px solid ${ESTADO_STRIPE[c.estado]}`, paddingLeft: '0.8rem' }}>
-                      <p style={{ margin: 0, color: '#64748b', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)' }}>{new Date(c.date).toLocaleDateString('es-ES')} · {c.time}</p>
-                      <strong style={{ display: 'block', marginTop: '0.3rem', fontSize: 'clamp(0.75rem, 2vw, 0.9rem)' }}>{c.title}</strong>
-                      {c.place && <p style={{ marginTop: '0.3rem', color: '#64748b', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)' }}>📍 {c.place}</p>}
-                      {c.notes && <p style={{ marginTop: '0.3rem', color: '#64748b', fontSize: 'clamp(0.65rem, 1.5vw, 0.8rem)' }}>{c.notes}</p>}
-                      <span style={{ display: 'inline-block', marginTop: '0.5rem', background: ESTADO_BG[c.estado], color: ESTADO_COLOR[c.estado], padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', fontWeight: 700 }}>{c.estado}</span>
-                    </div>
-                  ))}
+                <div className="citaList">
+                  {citas.map((cita) => {
+                    const [yyyy, mm, dd] = cita.date?.split('-') || ['', '', '']
+                    const monthName = mm ? new Date(Number(yyyy), Number(mm) - 1, 1).toLocaleDateString('es-ES', { month: 'short' }) : ''
+
+                    return (
+                      <article key={cita.id} className="citaItem">
+                        <div className="citaDate">
+                          <strong>{dd || '—'}</strong>
+                          <span>{monthName || 'fecha'}</span>
+                        </div>
+                        <div>
+                          <div className="citaTitle">{cita.title}</div>
+                          <div className="citaMeta">
+                            🕒 {cita.time || 'Sin hora'}
+                            {cita.place ? <><br />📍 {cita.place}</> : null}
+                            {cita.notes ? <><br />📝 {cita.notes}</> : null}
+                          </div>
+                        </div>
+                        <span className="badge">{cita.estado || 'pendiente'}</span>
+                      </article>
+                    )
+                  })}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', margin: '1rem 0 0 0', fontSize: 'clamp(0.7rem, 2vw, 0.85rem)' }}>Sin citas programadas. <button onClick={() => router.push('/dashboard/agenda')} style={{ color: color, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600, fontFamily: 'inherit' }}>Ver agenda</button></p>
+                <div className="empty">Sin citas programadas para este cliente.</div>
               )}
-            </div>
+            </section>
           </div>
 
-          {/* SIDEBAR - FICHA */}
-          <aside style={{ background: '#fff', border: '1px solid #e5ddcf', borderRadius: '8px', padding: 'clamp(1rem, 2vw, 1.5rem)', minHeight: '300px', position: 'sticky', top: 'clamp(0.5rem, 2vw, 1.5rem)' }}>
-            <h2 style={{ marginTop: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(1rem, 3vw, 1.3rem)' }}>Ficha</h2>
-            <FichaItem label="Email" value={cliente.email || '—'} />
-            <FichaItem label="Teléfono" value={cliente.phone || '—'} />
-            <FichaItem label="CIF" value={(cliente as any).cif || '—'} />
-            <FichaItem label="CP" value={(cliente as any).cp || '—'} />
-            <FichaItem label="Ciudad" value={(cliente as any).ciudad || '—'} />
-            <FichaItem label="Dirección" value={cliente.address || '—'} />
-            <FichaItem label="Local" value={cliente.local || '—'} />
-            <FichaItem label="Estado" value={cliente.estado || '—'} />
-            <FichaItem label="Notas" value={cliente.notes || '—'} />
-
-            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5ddcf' }}>
-              <button onClick={async () => { if (confirm('¿Eliminar este cliente?')) { const { error } = await supabase.from('clientes').delete().eq('id', clientId); if (!error) router.push('/dashboard/clientes') } }} style={{ width: '100%', padding: 'clamp(0.4rem, 1.5vw, 0.65rem)', background: '#fcebeb', color: '#991f1f', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: 'clamp(0.7rem, 2vw, 0.85rem)', fontFamily: 'inherit' }}>🗑️ Eliminar cliente</button>
+          <aside className="sectionCard">
+            <h2 className="sectionTitle">Ficha</h2>
+            <div className="infoGrid">
+              <div><span className="infoLabel">Email</span><div className="infoValue">{safeText(cliente.email)}</div></div>
+              <div><span className="infoLabel">Teléfono</span><div className="infoValue">{safeText(cliente.phone)}</div></div>
+              <div><span className="infoLabel">CIF</span><div className="infoValue">{safeText(cliente.cif)}</div></div>
+              <div><span className="infoLabel">CP</span><div className="infoValue">{safeText(cliente.cp)}</div></div>
+              <div><span className="infoLabel">Ciudad</span><div className="infoValue">{safeText(cliente.ciudad)}</div></div>
+              <div><span className="infoLabel">Dirección</span><div className="infoValue">{safeText(cliente.address)}</div></div>
+              <div><span className="infoLabel">Local</span><div className="infoValue">{safeText(cliente.local)}</div></div>
+              <div><span className="infoLabel">Estado</span><div className="infoValue">{safeText(cliente.estado)}</div></div>
+              {cliente.notes ? <div><span className="infoLabel">Notas</span><div className="infoValue">{cliente.notes}</div></div> : null}
             </div>
+
+            <button className="deleteBtn" onClick={deleteClient}>🗑 Eliminar</button>
           </aside>
-        </section>
-
-        {/* MODAL EDITAR CLIENTE */}
-        {showEditModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(1rem, 2vw, 1.5rem)', backdropFilter: 'blur(8px)', overflow: 'auto' }} onClick={closeEditModal}>
-            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 'clamp(300px, 95vw, 600px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 16px 48px rgba(10,15,20,.13)', margin: 'auto' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: 'clamp(0.8rem, 2vw, 1.1rem) clamp(1rem, 2vw, 1.4rem)', borderBottom: '1px solid #e2ddd4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
-                <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 'clamp(0.9rem, 2vw, 1rem)', fontWeight: 700 }}>Editar cliente</div>
-                <button onClick={closeEditModal} style={{ width: 'clamp(24px, 5vw, 28px)', height: 'clamp(24px, 5vw, 28px)', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 'clamp(0.9rem, 2vw, 1.1rem)', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
-              </div>
-              <div style={{ padding: 'clamp(1rem, 2vw, 1.35rem)', display: 'flex', flexDirection: 'column', gap: 'clamp(0.6rem, 2vw, 0.85rem)' }}>
-                {[
-                  { label:'Nombre *', key:'name', type:'text', validation: 'name' },
-                  { label:'Teléfono / WhatsApp', key:'phone', type:'tel', validation: 'phone' },
-                  { label:'Email', key:'email', type:'email', validation: 'email' },
-                  { label:'CIF', key:'cif', type:'text', validation: 'cif' },
-                  { label:'Código Postal', key:'cp', type:'text', validation: 'cp' },
-                  { label:'Ciudad', key:'ciudad', type:'text', validation: null },
-                  { label:'Dirección', key:'address', type:'text', validation: null },
-                  { label:'Nombre del local', key:'local', type:'text', validation: null },
-                  { label:'Etiqueta', key:'tags', type:'text', validation: null },
-                ].map(f => (
-                  <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: 'clamp(0.6rem, 1.5vw, 0.68rem)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>{f.label}</label>
-                    <input
-                      type={f.type}
-                      value={form[f.key as keyof typeof form]}
-                      onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                      style={{ 
-                        width: '100%', 
-                        padding: 'clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.85rem)', 
-                        background: '#fff', 
-                        border: f.validation && !validation[f.validation as keyof typeof validation].valid 
-                          ? '1.5px solid #dc2626' 
-                          : '1.5px solid #cbd5e1', 
-                        borderRadius: 8, 
-                        fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', 
-                        fontFamily: 'inherit', 
-                        transition: 'all .15s', 
-                        color: '#0a0f14', 
-                        outline: 'none' 
-                      }}
-                    />
-                    {f.validation && validation[f.validation as keyof typeof validation].message && (
-                      <div style={{ 
-                        fontSize: 'clamp(0.6rem, 1.5vw, 0.7rem)', 
-                        color: validation[f.validation as keyof typeof validation].valid ? '#16a34a' : '#dc2626', 
-                        marginTop: '.25rem',
-                        fontWeight: 600
-                      }}>
-                        {validation[f.validation as keyof typeof validation].message}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div>
-                  <label style={{ display: 'block', fontSize: 'clamp(0.6rem, 1.5vw, 0.68rem)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>Estado</label>
-                  <select value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })} style={{ width: '100%', padding: 'clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.85rem)', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', fontFamily: 'inherit', color: '#0a0f14' }}>
-                    <option value="nuevo">Nuevo</option>
-                    <option value="contactado">Contactado</option>
-                    <option value="cita">Cita agendada</option>
-                    <option value="completado">Completado</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 'clamp(0.6rem, 1.5vw, 0.68rem)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#1c2b3a', marginBottom: '.3rem' }}>Notas internas</label>
-                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} style={{ width: '100%', padding: 'clamp(0.5rem, 1.5vw, 0.7rem) clamp(0.6rem, 1.5vw, 0.85rem)', background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', fontFamily: 'inherit', resize: 'vertical', color: '#0a0f14' }} />
-                </div>
-              </div>
-              <div style={{ padding: 'clamp(0.8rem, 2vw, 1rem) clamp(1rem, 2vw, 1.4rem)', borderTop: '1px solid #e2ddd4', display: 'flex', justifyContent: 'flex-end', gap: 'clamp(0.4rem, 1vw, 0.55rem)', flexWrap: 'wrap' }}>
-                <button onClick={closeEditModal} style={{ padding: 'clamp(0.5rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.1rem)', background: 'transparent', color: '#0a0f14', border: '1.5px solid #cbd5e1', borderRadius: 8, fontSize: 'clamp(0.7rem, 2vw, 0.84rem)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Cancelar</button>
-                <button onClick={saveCliente} disabled={saving || !validateForm()} style={{ padding: 'clamp(0.5rem, 1.5vw, 0.65rem) clamp(0.8rem, 2vw, 1.1rem)', background: validateForm() ? '#0a0f14' : '#cbd5e1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 'clamp(0.7rem, 2vw, 0.84rem)', fontWeight: 600, cursor: validateForm() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: saving ? 0.7 : 1, whiteSpace: 'nowrap' }}>{saving ? 'Guardando…' : 'Guardar cambios'}</button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </main>
-    </div>
-  )
-}
-
-function FichaItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ marginBottom: 'clamp(0.8rem, 2vw, 1.2rem)' }}>
-      <div style={{ textTransform: 'uppercase', letterSpacing: '2px', color: '#1c2b3a', fontSize: 'clamp(0.7rem, 1.5vw, 0.8rem)', marginBottom: '0.4rem', fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)', color: '#071018', wordBreak: 'break-word' }}>{value}</div>
     </div>
   )
 }
