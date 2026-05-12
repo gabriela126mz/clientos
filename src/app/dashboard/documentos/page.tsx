@@ -52,11 +52,34 @@ interface Cliente {
   ciudad?: string
 }
 
-const STATUS_LABEL: Record<string, string> = { borrador: 'Borrador', enviado: 'Enviado', aceptado: 'Aceptado', rechazado: 'Rechazado' }
-const STATUS_BG: Record<string, string> = { borrador: '#f3f0ea', enviado: '#dbeafe', aceptado: '#dcfce7', rechazado: '#fee2e2' }
-const STATUS_COLOR: Record<string, string> = { borrador: '#64748b', enviado: '#1d4ed8', aceptado: '#166534', rechazado: '#991b1b' }
+const STATUS_LABEL: Record<string, string> = {
+  borrador: 'Borrador',
+  enviado: 'Enviado',
+  aceptado: 'Aceptado',
+  rechazado: 'Rechazado',
+}
 
-const fmt = (n: number) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const STATUS_BG: Record<string, string> = {
+  borrador: '#f3f0ea',
+  enviado: '#dbeafe',
+  aceptado: '#dcfce7',
+  rechazado: '#fee2e2',
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  borrador: '#64748b',
+  enviado: '#1d4ed8',
+  aceptado: '#166534',
+  rechazado: '#991b1b',
+}
+
+const fmt = (n: number) =>
+  n.toLocaleString('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 
 const STORAGE_KEY = 'presupuesto_form'
 
@@ -93,69 +116,106 @@ export default function Documentos() {
   const [estado, setEstado] = useState<'borrador' | 'enviado' | 'aceptado' | 'rechazado'>('borrador')
   const [metodoPago, setMetodoPago] = useState('transferencia')
 
+  const calcularTotalLinea = (item: LineItem) => {
+    const cant = Number(item.cantidad) || 0
+    const prec = Number(item.precio) || 0
+    const subtotal = cant * prec
+    const desc = Number(item.descuento) || 0
+    const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
+    const base = subtotal - descuentoLinea
+    const iv = Number(item.iva) || 0
+    const iva = (base * iv) / 100
+    return { subtotal, descuentoLinea, base, iva, total: base + iva }
+  }
+
+  const calcularTotales = (itemsToCalc: LineItem[] = items) => {
+    let baseTotal = 0
+    let ivaTotal = 0
+
+    itemsToCalc.forEach(item => {
+      const calc = calcularTotalLinea(item)
+      baseTotal += calc.base
+      ivaTotal += calc.iva
+    })
+
+    return { base: baseTotal, iva: ivaTotal, total: baseTotal + ivaTotal }
+  }
+
   useEffect(() => {
-    if (showForm) {
-      const formData = {
-        clienteExterno,
-        selectedClientId,
-        clientName,
-        clientApellido,
-        clientEmail,
-        clientPhone,
-        clientCity,
-        clientAddress,
-        clientCif,
-        clientCp,
-        items,
-        notas,
-        numero,
-        fecha,
-        estado,
-        metodoPago,
-      }
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData))
-      } catch (e) {
-        console.error('localStorage:', e)
-      }
+    if (!showForm) return
+
+    const formData = {
+      clienteExterno,
+      selectedClientId,
+      clientName,
+      clientApellido,
+      clientEmail,
+      clientPhone,
+      clientCity,
+      clientAddress,
+      clientCif,
+      clientCp,
+      items,
+      notas,
+      numero,
+      fecha,
+      estado,
+      metodoPago,
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData))
+    } catch (e) {
+      console.error('localStorage:', e)
     }
   }, [showForm, clienteExterno, selectedClientId, clientName, clientApellido, clientEmail, clientPhone, clientCity, clientAddress, clientCif, clientCp, items, notas, numero, fecha, estado, metodoPago])
 
   const loadData = useCallback(async () => {
     if (!user) return
+
     setLoading(true)
+
     try {
       const [profileRes, clientesRes, docsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('clientes').select('*').eq('user_id', user.id),
-        supabase.from('presupuestos').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+        supabase.from('presupuestos').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       ])
 
       if (profileRes.data) setProfile(profileRes.data)
       if (clientesRes.data) setClientes(clientesRes.data as Cliente[])
       if (docsRes.data) {
-        setDocumentos(docsRes.data.map(doc => ({ ...doc, items: Array.isArray(doc.items) ? doc.items : [] })))
+        setDocumentos(
+          docsRes.data.map(doc => ({
+            ...doc,
+            total: Number(doc.total) || 0,
+            items: Array.isArray(doc.items) ? doc.items : [],
+          })) as Documento[]
+        )
       }
     } catch (err) {
       console.error('Error:', err)
     } finally {
       setLoading(false)
     }
-  }, [user, supabase])
+  }, [user])
 
   useEffect(() => {
     if (authLoading) return
+
     if (!user) {
       router.push('/')
       return
     }
+
     loadData()
   }, [authLoading, user, loadData, router])
 
   const generarNumeroUnico = useCallback(async () => {
     if (!user) return ''
+
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('presupuestos')
         .select('id, numero')
         .eq('user_id', user.id)
@@ -170,10 +230,11 @@ export default function Documentos() {
       console.error('Error:', e)
       return `PRES-${new Date().getFullYear()}-0001`
     }
-  }, [user, supabase])
+  }, [user])
 
   const resetForm = useCallback(async () => {
     const nuevoNumero = await generarNumeroUnico()
+
     setEditingDoc(null)
     setClienteExterno(false)
     setSelectedClientId('')
@@ -191,6 +252,7 @@ export default function Documentos() {
     setEstado('borrador')
     setFecha(new Date().toISOString().split('T')[0])
     setNumero(nuevoNumero)
+
     try {
       localStorage.removeItem(STORAGE_KEY)
     } catch (e) {
@@ -201,6 +263,7 @@ export default function Documentos() {
   const openNewDoc = useCallback(async () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
+
       if (stored) {
         const data = JSON.parse(stored)
         setClienteExterno(data.clienteExterno || false)
@@ -227,40 +290,12 @@ export default function Documentos() {
       console.error('localStorage:', e)
       await resetForm()
     }
+
     setShowForm(true)
   }, [generarNumeroUnico, resetForm])
 
   const openEditDoc = (doc: Documento) => {
     setEditingDoc(doc)
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const data = JSON.parse(stored)
-        if (data.numero === doc.numero) {
-          setClienteExterno(data.clienteExterno || doc.cliente_externo)
-          setSelectedClientId(data.selectedClientId || doc.client_id)
-          setClientName(data.clientName || doc.client_name)
-          setClientApellido(data.clientApellido || doc.cliente_apellido)
-          setClientEmail(data.clientEmail || doc.cliente_email)
-          setClientPhone(data.clientPhone || doc.cliente_telefono)
-          setClientCity(data.clientCity || doc.cliente_ciudad)
-          setClientAddress(data.clientAddress || doc.cliente_direccion)
-          setClientCif(data.clientCif || doc.cliente_cif)
-          setClientCp(data.clientCp || doc.cliente_cp)
-          setItems(data.items?.length > 0 ? data.items : doc.items)
-          setNotas(data.notas || doc.notas)
-          setNumero(doc.numero)
-          setFecha(data.fecha || doc.fecha)
-          setEstado(data.estado || doc.estado)
-          setMetodoPago(data.metodoPago || doc.metodo_pago)
-          setShowForm(true)
-          return
-        }
-      }
-    } catch (e) {
-      console.error('localStorage:', e)
-    }
-
     setSelectedClientId(doc.client_id || '')
     setClientName(doc.client_name || '')
     setClientApellido(doc.cliente_apellido || '')
@@ -292,48 +327,28 @@ export default function Documentos() {
       setClientAddress('')
       setClientCif('')
       setClientCp('')
-    } else if (clientId) {
-      const cliente = clientes.find(c => c.id === clientId)
-      if (cliente) {
-        setClienteExterno(false)
-        setSelectedClientId(clientId)
-        setClientName(cliente.name || '')
-        setClientApellido(cliente.apellido || '')
-        setClientEmail(cliente.email || '')
-        setClientPhone(cliente.phone || '')
-        setClientCity(cliente.ciudad || '')
-        setClientAddress(cliente.address || '')
-        setClientCif(cliente.cif || '')
-        setClientCp(cliente.cp || '')
-      }
+      return
     }
-  }
 
-  const calcularTotalLinea = (item: LineItem) => {
-    const cant = Number(item.cantidad) || 0
-    const prec = Number(item.precio) || 0
-    const subtotal = cant * prec
-    const desc = Number(item.descuento) || 0
-    const descuentoLinea = desc > 0 ? (subtotal * desc) / 100 : 0
-    const base = subtotal - descuentoLinea
-    const iv = Number(item.iva) || 0
-    const iva = (base * iv) / 100
-    return { subtotal, descuentoLinea, base, iva, total: base + iva }
-  }
+    const cliente = clientes.find(c => c.id === clientId)
 
-  const calcularTotales = () => {
-    let baseTotal = 0
-    let ivaTotal = 0
-    items.forEach(item => {
-      const calc = calcularTotalLinea(item)
-      baseTotal += calc.base
-      ivaTotal += calc.iva
-    })
-    return { base: baseTotal, iva: ivaTotal, total: baseTotal + ivaTotal }
+    if (cliente) {
+      setClienteExterno(false)
+      setSelectedClientId(clientId)
+      setClientName(cliente.name || '')
+      setClientApellido(cliente.apellido || '')
+      setClientEmail(cliente.email || '')
+      setClientPhone(cliente.phone || '')
+      setClientCity(cliente.ciudad || '')
+      setClientAddress(cliente.address || '')
+      setClientCif(cliente.cif || '')
+      setClientCp(cliente.cp || '')
+    }
   }
 
   const saveDoc = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!user) {
       alert('❌ Usuario no autenticado')
       return
@@ -345,20 +360,23 @@ export default function Documentos() {
     }
 
     const validItems = items.filter(i => i.concepto.trim())
+
     if (validItems.length === 0) {
       alert('⚠️ Añade al menos una línea con concepto')
       return
     }
 
     const invalidItems = validItems.filter(i => !i.cantidad || !i.precio)
+
     if (invalidItems.length > 0) {
       alert('⚠️ Cantidad y Precio son obligatorios en todas las líneas')
       return
     }
 
     setSaving(true)
+
     try {
-      const totales = calcularTotales()
+      const totales = calcularTotales(validItems)
       const payload: any = {
         user_id: user.id,
         client_id: selectedClientId || null,
@@ -380,17 +398,12 @@ export default function Documentos() {
         metodo_pago: metodoPago,
       }
 
-      let result
-      if (editingDoc) {
-        result = await supabase.from('presupuestos').update(payload).eq('id', editingDoc.id).select()
-      } else {
-        result = await supabase.from('presupuestos').insert([payload]).select()
-      }
+      const result = editingDoc
+        ? await supabase.from('presupuestos').update(payload).eq('id', editingDoc.id).select()
+        : await supabase.from('presupuestos').insert([payload]).select()
 
       if (result.error) {
-        console.error('Error:', result.error)
         alert('❌ Error: ' + result.error.message)
-        setSaving(false)
         return
       }
 
@@ -405,7 +418,6 @@ export default function Documentos() {
       await resetForm()
       alert(editingDoc ? '✅ Actualizado' : '✅ Creado')
     } catch (err: any) {
-      console.error('Error:', err)
       alert('❌ Error: ' + err.message)
     } finally {
       setSaving(false)
@@ -414,6 +426,7 @@ export default function Documentos() {
 
   const deleteDoc = async (id: string) => {
     if (!confirm('¿Eliminar?')) return
+
     try {
       const result = await supabase.from('presupuestos').delete().eq('id', id)
       if (result.error) throw result.error
@@ -422,83 +435,6 @@ export default function Documentos() {
     } catch (err: any) {
       alert('❌ Error: ' + err.message)
     }
-  }
-
-  const renderPDFContent = () => {
-    const totales = calcularTotales()
-    return (
-      <div style={{ background: 'white', padding: '2rem', borderRadius: 6, fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}>
-        <div style={{ fontSize: '26px', fontWeight: 'bold', marginBottom: '18px', textAlign: 'center' }}>{pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'}</div>
-
-        <div style={{ marginBottom: '15px', fontSize: '11px' }}>
-          <div><strong>Número:</strong> {pdfDoc.numero}</div>
-          <div><strong>Fecha:</strong> {new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}</div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '25px' }}>
-          <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>EMISOR:</div>
-            <div style={{ fontSize: '10px', lineHeight: '1.8' }}>
-              <p style={{ margin: '3px 0' }}><strong>{profile?.business_name || 'Empresa'}</strong></p>
-              <p style={{ margin: '3px 0' }}>{profile?.owner_name}</p>
-              {profile?.cif && <p style={{ margin: '3px 0' }}><strong>CIF:</strong> {profile.cif}</p>}
-              <p style={{ margin: '3px 0' }}><strong>Email:</strong> {profile?.business_email || '—'}</p>
-              <p style={{ margin: '3px 0' }}><strong>Tel:</strong> {profile?.phone || '—'}</p>
-              <p style={{ margin: '3px 0' }}><strong>Dir:</strong> {profile?.address || '—'}</p>
-              <p style={{ margin: '3px 0' }}>{profile?.cp} {profile?.city}</p>
-            </div>
-          </div>
-          <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>CLIENTE:</div>
-            <div style={{ fontSize: '10px', lineHeight: '1.8' }}>
-              <p style={{ margin: '3px 0' }}><strong>{pdfDoc.client_name} {pdfDoc.cliente_apellido || ''}</strong></p>
-              {pdfDoc.cliente_cif && <p style={{ margin: '3px 0' }}><strong>CIF:</strong> {pdfDoc.cliente_cif}</p>}
-              <p style={{ margin: '3px 0' }}><strong>Email:</strong> {pdfDoc.cliente_email || '—'}</p>
-              <p style={{ margin: '3px 0' }}><strong>Tel:</strong> {pdfDoc.cliente_telefono || '—'}</p>
-              <p style={{ margin: '3px 0' }}><strong>Dir:</strong> {pdfDoc.cliente_direccion || '—'}</p>
-              <p style={{ margin: '3px 0' }}>{pdfDoc.cliente_cp} {pdfDoc.cliente_ciudad}</p>
-            </div>
-          </div>
-        </div>
-
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '10px' }}>
-          <thead>
-            <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #333' }}>
-              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>CONCEPTO</th>
-              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>DESCRIPCIÓN</th>
-              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>CANTIDAD</th>
-              <th style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>PRECIO</th>
-              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>IVA</th>
-              <th style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pdfDoc.items.map((item: LineItem, i: number) => {
-              const calc = calcularTotalLinea(item)
-              return (
-                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '8px' }}>{item.concepto}</td>
-                  <td style={{ padding: '8px', fontSize: '9px', color: '#666' }}>{item.descripcion}</td>
-                  <td style={{ padding: '8px', textAlign: 'center' }}>{item.cantidad}</td>
-                  <td style={{ padding: '8px', textAlign: 'right' }}>{item.precio.toFixed(2)}€</td>
-                  <td style={{ padding: '8px', textAlign: 'center' }}>{item.iva}%</td>
-                  <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>{calc.total.toFixed(2)}€</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-
-        <div style={{ textAlign: 'right', marginBottom: '20px', paddingBottom: '15px', borderBottom: '2px solid #333' }}>
-          <div style={{ marginBottom: '5px', fontSize: '11px' }}><strong>BASE:</strong> {fmt(totales.base)}</div>
-          <div style={{ marginBottom: '8px', fontSize: '11px' }}><strong>IVA 21%:</strong> {fmt(totales.iva)}</div>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb', marginTop: '12px' }}>TOTAL: {fmt(totales.total)}</div>
-        </div>
-
-        {pdfDoc.metodo_pago && <div style={{ marginBottom: '12px', fontSize: '10px' }}><strong>Método de pago:</strong> {pdfDoc.metodo_pago.toUpperCase()}</div>}
-        {pdfDoc.notas && <div style={{ marginTop: '12px', padding: '12px', background: '#f9f9f9', borderLeft: '4px solid #2563eb', fontSize: '10px', whiteSpace: 'pre-wrap' }}><strong>Observaciones:</strong> {pdfDoc.notas}</div>}
-      </div>
-    )
   }
 
   const generarPDF = (doc?: Documento, type: 'presupuesto' | 'factura' = 'presupuesto') => {
@@ -516,17 +452,23 @@ export default function Documentos() {
       items,
       notas,
       metodo_pago: metodoPago,
+      total: calcularTotales(items).total,
+      estado,
     }
+
     setPdfDoc(docData)
     setPdfType(type)
     setShowPDFModal(true)
   }
 
   const descargarPDF = async () => {
+    if (!pdfDoc) return
+
     try {
       const { jsPDF } = await import('jspdf')
       const doc = new jsPDF('p', 'mm', 'a4')
-      const totales = calcularTotales()
+      const pdfItems = Array.isArray(pdfDoc.items) ? pdfDoc.items : []
+      const totales = calcularTotales(pdfItems)
       const titulo = pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'
 
       doc.setFontSize(28)
@@ -539,7 +481,6 @@ export default function Documentos() {
       doc.text(`Fecha: ${new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}`, 120, 35)
 
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
       doc.text('EMISOR:', 20, 50)
       doc.text('CLIENTE:', 120, 50)
 
@@ -561,7 +502,7 @@ export default function Documentos() {
         yPos += 5
       }
 
-      doc.text(`Email: ${profile?.business_email || ''}`, 20, yPos)
+      doc.text(`Email: ${profile?.business_email || profile?.email || ''}`, 20, yPos)
       doc.text(`Email: ${pdfDoc.cliente_email || '—'}`, 120, yPos)
       yPos += 5
 
@@ -592,16 +533,17 @@ export default function Documentos() {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
 
-      pdfDoc.items.forEach((item: LineItem) => {
+      pdfItems.forEach((item: LineItem) => {
         if (yPos > 270) {
           doc.addPage()
           yPos = 20
         }
+
         const calc = calcularTotalLinea(item)
         doc.text(item.concepto.substring(0, 18), 18, yPos)
         doc.text(item.descripcion.substring(0, 18), 50, yPos)
         doc.text(String(item.cantidad), 105, yPos, { align: 'center' })
-        doc.text(`${item.precio.toFixed(2)}€`, 130, yPos, { align: 'right' })
+        doc.text(`${Number(item.precio).toFixed(2)}€`, 130, yPos, { align: 'right' })
         doc.text(`${item.iva}%`, 150, yPos, { align: 'center' })
         doc.text(`${calc.total.toFixed(2)}€`, 170, yPos, { align: 'right' })
         yPos += 7
@@ -612,10 +554,9 @@ export default function Documentos() {
       doc.setFontSize(10)
       doc.text(`BASE: ${totales.base.toFixed(2)}€`, 130, yPos, { align: 'right' })
       yPos += 7
-      doc.text(`IVA 21%: ${totales.iva.toFixed(2)}€`, 130, yPos, { align: 'right' })
+      doc.text(`IVA: ${totales.iva.toFixed(2)}€`, 130, yPos, { align: 'right' })
       yPos += 10
       doc.setFontSize(12)
-      doc.setFillColor(255, 255, 255)
       doc.rect(120, yPos - 6, 60, 10, 'S')
       doc.text(`TOTAL: ${totales.total.toFixed(2)}€`, 150, yPos, { align: 'right' })
 
@@ -638,6 +579,100 @@ export default function Documentos() {
     } catch (err: any) {
       alert('❌ Error: ' + err.message)
     }
+  }
+
+  const renderPDFContent = () => {
+    if (!pdfDoc) return null
+
+    const pdfItems = Array.isArray(pdfDoc.items) ? pdfDoc.items : []
+    const pdfTotales = calcularTotales(pdfItems)
+
+    return (
+      <div style={{ background: 'white', padding: '2rem', borderRadius: 6, fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}>
+        <div style={{ fontSize: '26px', fontWeight: 'bold', marginBottom: '18px', textAlign: 'center' }}>
+          {pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'}
+        </div>
+
+        <div style={{ marginBottom: '15px', fontSize: '11px' }}>
+          <div><strong>Número:</strong> {pdfDoc.numero}</div>
+          <div><strong>Fecha:</strong> {new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '25px' }}>
+          <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>EMISOR:</div>
+            <div style={{ fontSize: '10px', lineHeight: '1.8' }}>
+              <p style={{ margin: '3px 0' }}><strong>{profile?.business_name || 'Empresa'}</strong></p>
+              <p style={{ margin: '3px 0' }}>{profile?.owner_name}</p>
+              {profile?.cif && <p style={{ margin: '3px 0' }}><strong>CIF:</strong> {profile.cif}</p>}
+              <p style={{ margin: '3px 0' }}><strong>Email:</strong> {profile?.business_email || profile?.email || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Tel:</strong> {profile?.phone || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Dir:</strong> {profile?.address || '—'}</p>
+              <p style={{ margin: '3px 0' }}>{profile?.cp} {profile?.city}</p>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>CLIENTE:</div>
+            <div style={{ fontSize: '10px', lineHeight: '1.8' }}>
+              <p style={{ margin: '3px 0' }}><strong>{pdfDoc.client_name} {pdfDoc.cliente_apellido || ''}</strong></p>
+              {pdfDoc.cliente_cif && <p style={{ margin: '3px 0' }}><strong>CIF:</strong> {pdfDoc.cliente_cif}</p>}
+              <p style={{ margin: '3px 0' }}><strong>Email:</strong> {pdfDoc.cliente_email || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Tel:</strong> {pdfDoc.cliente_telefono || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Dir:</strong> {pdfDoc.cliente_direccion || '—'}</p>
+              <p style={{ margin: '3px 0' }}>{pdfDoc.cliente_cp} {pdfDoc.cliente_ciudad}</p>
+            </div>
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '10px' }}>
+          <thead>
+            <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #333' }}>
+              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>CONCEPTO</th>
+              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>DESCRIPCIÓN</th>
+              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>CANTIDAD</th>
+              <th style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>PRECIO</th>
+              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>IVA</th>
+              <th style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pdfItems.map((item: LineItem, i: number) => {
+              const calc = calcularTotalLinea(item)
+
+              return (
+                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '8px' }}>{item.concepto}</td>
+                  <td style={{ padding: '8px', fontSize: '9px', color: '#666' }}>{item.descripcion}</td>
+                  <td style={{ padding: '8px', textAlign: 'center' }}>{item.cantidad}</td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>{Number(item.precio).toFixed(2)}€</td>
+                  <td style={{ padding: '8px', textAlign: 'center' }}>{item.iva}%</td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>{calc.total.toFixed(2)}€</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        <div style={{ textAlign: 'right', marginBottom: '20px', paddingBottom: '15px', borderBottom: '2px solid #333' }}>
+          <div style={{ marginBottom: '5px', fontSize: '11px' }}><strong>BASE:</strong> {fmt(pdfTotales.base)}</div>
+          <div style={{ marginBottom: '8px', fontSize: '11px' }}><strong>IVA:</strong> {fmt(pdfTotales.iva)}</div>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb', marginTop: '12px' }}>TOTAL: {fmt(pdfTotales.total)}</div>
+        </div>
+
+        {pdfDoc.metodo_pago && (
+          <div style={{ marginBottom: '12px', fontSize: '10px' }}>
+            <strong>Método de pago:</strong> {pdfDoc.metodo_pago.toUpperCase()}
+          </div>
+        )}
+
+        {pdfDoc.notas && (
+          <div style={{ marginTop: '12px', padding: '12px', background: '#f9f9f9', borderLeft: '4px solid #2563eb', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
+            <strong>Observaciones:</strong> {pdfDoc.notas}
+          </div>
+        )}
+      </div>
+    )
   }
 
   if (loading) {
@@ -669,13 +704,12 @@ export default function Documentos() {
           <button className={styles.btnDark} onClick={openNewDoc} style={{ background: '#2563eb' }}>+ Nuevo presupuesto</button>
         </div>
 
-        {/* FORM MODAL */}
         {showForm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(8px)', overflowY: 'auto' }} onClick={() => setShowForm(false)}>
             <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding: '1rem', borderBottom: '2px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fafafa', zIndex: 10, flexShrink: 0 }}>
                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a202c', whiteSpace: 'nowrap' }}>{editingDoc ? 'Editar' : 'Nuevo'} Presupuesto</h2>
-                <button onClick={() => setShowForm(false)} style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.2rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: '1rem' }}>×</button>
+                <button type="button" onClick={() => setShowForm(false)} style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.2rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: '1rem' }}>×</button>
               </div>
 
               <form onSubmit={saveDoc} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
@@ -738,7 +772,7 @@ export default function Documentos() {
                         <div key={i} style={{ marginBottom: '.8rem', padding: '.8rem', border: '1px solid #e0e0e0', borderRadius: 6, background: '#fafafa', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                           <div>
                             <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Concepto *</label>
-                            <input type="text" placeholder="Ej: Diseño web" value={item.concepto} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, concepto: e.target.value } : it))} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', borderColor: !item.concepto && item.concepto !== undefined ? '#ef4444' : '#ddd' }} />
+                            <input type="text" placeholder="Ej: Diseño web" value={item.concepto} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, concepto: e.target.value } : it))} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem' }} />
                           </div>
 
                           <div>
@@ -749,12 +783,11 @@ export default function Documentos() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                             <div>
                               <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Cantidad *</label>
-                              <input type="number" value={item.cantidad || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, cantidad: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', textAlign: 'center', borderColor: !item.cantidad && item.concepto ? '#ef4444' : '#ddd' }} />
+                              <input type="number" value={item.cantidad || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, cantidad: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', textAlign: 'center' }} />
                             </div>
-
                             <div>
                               <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Precio *</label>
-                              <input type="number" value={item.precio || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, precio: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', textAlign: 'right', borderColor: !item.precio && item.concepto ? '#ef4444' : '#ddd' }} />
+                              <input type="number" value={item.precio || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, precio: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', textAlign: 'right' }} />
                             </div>
                           </div>
 
@@ -768,12 +801,10 @@ export default function Documentos() {
                                 <option value={21}>21%</option>
                               </select>
                             </div>
-
                             <div>
                               <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Total</label>
                               <div style={{ padding: '.5rem', background: '#f0f0f0', borderRadius: 4, fontSize: '.85rem', fontWeight: 700, textAlign: 'right' }}>{calc.total.toFixed(2)}€</div>
                             </div>
-
                             <button type="button" onClick={() => setItems(items.filter((_, idx) => idx !== i))} style={{ padding: '.5rem .4rem', background: '#fee2e2', border: 'none', borderRadius: 4, color: '#991b1b', cursor: 'pointer', fontWeight: 600, fontSize: '.75rem' }}>✕</button>
                           </div>
                         </div>
@@ -784,18 +815,9 @@ export default function Documentos() {
                   </div>
 
                   <div style={{ padding: '1rem', background: '#f8f8f8', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem', textAlign: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>BASE</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(totales.base)}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>IVA 21%</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(totales.iva)}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>TOTAL</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#2563eb' }}>{fmt(totales.total)}</div>
-                    </div>
+                    <div><div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>BASE</div><div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(totales.base)}</div></div>
+                    <div><div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>IVA</div><div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(totales.iva)}</div></div>
+                    <div><div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>TOTAL</div><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#2563eb' }}>{fmt(totales.total)}</div></div>
                   </div>
 
                   <div>
@@ -827,13 +849,12 @@ export default function Documentos() {
           </div>
         )}
 
-        {/* PDF MODAL - ENORME */}
         {showPDFModal && pdfDoc && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', backdropFilter: 'blur(8px)' }} onClick={() => setShowPDFModal(false)}>
             <div style={{ background: '#fff', borderRadius: 12, width: '99%', height: '98vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding: '1rem', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#fafafa' }}>
                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{pdfType === 'presupuesto' ? 'Presupuesto' : 'Factura'} - {pdfDoc.numero}</h2>
-                <button onClick={() => setShowPDFModal(false)} style={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.3rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
+                <button type="button" onClick={() => setShowPDFModal(false)} style={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.3rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
               </div>
 
               <div style={{ padding: '2rem', background: '#f5f5f5', overflowY: 'auto', flex: 1 }}>
@@ -841,14 +862,13 @@ export default function Documentos() {
               </div>
 
               <div style={{ padding: '1rem', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', flexWrap: 'wrap', flexShrink: 0, background: '#fafafa' }}>
-                <button onClick={() => setShowPDFModal(false)} style={{ padding: '0.7rem 1.2rem', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 6, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cerrar</button>
-                <button onClick={descargarPDF} style={{ padding: '0.7rem 1.2rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📥 Descargar</button>
+                <button type="button" onClick={() => setShowPDFModal(false)} style={{ padding: '0.7rem 1.2rem', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 6, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cerrar</button>
+                <button type="button" onClick={descargarPDF} style={{ padding: '0.7rem 1.2rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📥 Descargar</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* TABLA - MÓVIL: CÓDIGO, CLIENTE, ESTADO, FECHA */}
         <div className={styles.card} style={{ padding: 0, marginTop: '2rem', overflow: 'hidden' }}>
           <table className={styles.tbl} style={{ fontSize: '.9rem', width: '100%' }}>
             <thead>
@@ -856,23 +876,23 @@ export default function Documentos() {
                 <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>CÓDIGO</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>CLIENTE</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>FECHA</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>TOTAL</th>
                 <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>ESTADO</th>
                 <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
               {documentos.map(doc => (
-                <tr key={doc.id} onClick={() => openEditDoc(doc)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => (e.currentTarget.style.background = '#f9f9f9')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <tr key={doc.id} onClick={() => openEditDoc(doc)} style={{ cursor: 'pointer', transition: 'background 0.2s' }}>
                   <td style={{ padding: '0.75rem' }}>
                     <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#1a202c' }}>
-                      PRES-{doc.numero.split('-')[2]}
+                      PRES-{doc.numero?.split('-')?.[2] || doc.numero}
                     </div>
                   </td>
-                  <td style={{ padding: '0.75rem', fontSize: '.8rem', color: '#333' }}>
-                    {doc.client_name}
-                  </td>
-                  <td style={{ padding: '0.75rem', fontSize: '.75rem', color: '#666' }}>
-                    {new Date(doc.fecha).toLocaleDateString('es-ES')}
+                  <td style={{ padding: '0.75rem', fontSize: '.8rem', color: '#333' }}>{doc.client_name}</td>
+                  <td style={{ padding: '0.75rem', fontSize: '.75rem', color: '#666' }}>{new Date(doc.fecha).toLocaleDateString('es-ES')}</td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '.8rem', fontWeight: 800, color: '#0a0f14' }}>
+                    {fmt(Number(doc.total) || 0)}
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                     <span style={{ background: STATUS_BG[doc.estado], color: STATUS_COLOR[doc.estado], padding: '.2rem .5rem', borderRadius: 20, fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', display: 'inline-block' }}>
@@ -881,10 +901,10 @@ export default function Documentos() {
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '.25rem', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
-                      <button onClick={() => generarPDF(doc, 'presupuesto')} title="Presupuesto" style={{ padding: '.3rem .35rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>👁️</button>
-                      <button onClick={() => generarPDF(doc, 'factura')} title="Factura" style={{ padding: '.3rem .35rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🧾</button>
-                      <button onClick={() => openEditDoc(doc)} title="Editar" style={{ padding: '.3rem .35rem', background: '#f3f0ea', color: '#0a0f14', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>✎</button>
-                      <button onClick={() => deleteDoc(doc.id)} title="Eliminar" style={{ padding: '.3rem .35rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🗑</button>
+                      <button type="button" onClick={() => generarPDF(doc, 'presupuesto')} title="Presupuesto" style={{ padding: '.3rem .35rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>👁️</button>
+                      <button type="button" onClick={() => generarPDF(doc, 'factura')} title="Factura" style={{ padding: '.3rem .35rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🧾</button>
+                      <button type="button" onClick={() => openEditDoc(doc)} title="Editar" style={{ padding: '.3rem .35rem', background: '#f3f0ea', color: '#0a0f14', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>✎</button>
+                      <button type="button" onClick={() => deleteDoc(doc.id)} title="Eliminar" style={{ padding: '.3rem .35rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🗑</button>
                     </div>
                   </td>
                 </tr>
@@ -896,7 +916,7 @@ export default function Documentos() {
             <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📄</div>
               <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '.5rem', color: '#1c2b3a' }}>Sin documentos</div>
-              <button onClick={openNewDoc} className={styles.btnDark} style={{ marginTop: '1rem', background: '#2563eb', padding: '0.65rem 1.1rem', fontSize: '.9rem' }}>+ Nuevo presupuesto</button>
+              <button type="button" onClick={openNewDoc} className={styles.btnDark} style={{ marginTop: '1rem', background: '#2563eb', padding: '0.65rem 1.1rem', fontSize: '.9rem' }}>+ Nuevo presupuesto</button>
             </div>
           )}
         </div>
