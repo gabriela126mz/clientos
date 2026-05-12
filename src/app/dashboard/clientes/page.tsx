@@ -231,25 +231,44 @@ const [showModal, setShowModal] = useState<boolean>(false)
   }
 
   // ✅ NUEVO CLIENTE - RECUPERA DATOS SI EXISTEN
-  const openNew = () => {
-    const stored = loadFormFromStorage()
-    
-    if (stored && !stored.editingId) {
-      // RECUPERAR DATOS GUARDADOS
-      setForm(stored.form || { name:'', phone:'', email:'', address:'', local:'', cif:'', cp:'', ciudad:'', estado:'nuevo', tags:'', notes:'' })
-      setShowAgenda(stored.showAgenda || false)
-      setAgendaForm(stored.agendaForm || { agendarHora: '10:00', agendarTitulo: '', agendarPlace: '', agendarNotas: '' })
-      setMiniCalMonth(stored.miniCalMonth || new Date().getMonth())
-      setMiniCalYear(stored.miniCalYear || new Date().getFullYear())
-      setSelectedCitaDate(stored.selectedCitaDate || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`)
-    } else {
-      resetFormState()
-    }
+const openNew = () => {
+  const stored = loadFormFromStorage()
 
-    setEditing(null)
-    const [showModal, setShowModal] = useState(false)
+  if (stored && !stored.editingId) {
+    setForm(stored.form || {
+      name: '',
+      phone: '',
+      email: '',
+      address: '',
+      local: '',
+      cif: '',
+      cp: '',
+      ciudad: '',
+      estado: 'nuevo',
+      tags: '',
+      notes: '',
+    })
+
+    setShowAgenda(stored.showAgenda || false)
+    setAgendaForm(stored.agendaForm || {
+      agendarHora: '10:00',
+      agendarTitulo: '',
+      agendarPlace: '',
+      agendarNotas: '',
+    })
+    setMiniCalMonth(stored.miniCalMonth || new Date().getMonth())
+    setMiniCalYear(stored.miniCalYear || new Date().getFullYear())
+    setSelectedCitaDate(
+      stored.selectedCitaDate ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
+    )
+  } else {
+    resetFormState()
   }
 
+  setEditing(null)
+  setShowModal(true)
+}
   // ✅ EDITAR CLIENTE - RECUPERA DATOS DEL CLIENTE + LOCALSTORAGE SI EXISTE
   const openEdit = (cl: Client) => {
     const stored = loadFormFromStorage()

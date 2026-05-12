@@ -93,7 +93,6 @@ export default function Documentos() {
   const [estado, setEstado] = useState<'borrador' | 'enviado' | 'aceptado' | 'rechazado'>('borrador')
   const [metodoPago, setMetodoPago] = useState('transferencia')
 
-  // ✅ GUARDAR EN LOCALSTORAGE
   useEffect(() => {
     if (showForm) {
       const formData = {
@@ -153,7 +152,6 @@ export default function Documentos() {
     loadData()
   }, [authLoading, user, loadData, router])
 
-  // ✅ GENERAR NÚMERO ÚNICO
   const generarNumeroUnico = useCallback(async () => {
     if (!user) return ''
     try {
@@ -165,9 +163,8 @@ export default function Documentos() {
         .limit(1)
 
       const ultimoNumero = data?.[0]?.numero?.split('-').pop()
-const siguienteNum = ultimoNumero ? parseInt(ultimoNumero, 10) + 1 : 1
+      const siguienteNum = ultimoNumero ? parseInt(ultimoNumero, 10) + 1 : 1
 
-return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')}`
       return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')}`
     } catch (e) {
       console.error('Error:', e)
@@ -201,7 +198,6 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
     }
   }, [generarNumeroUnico])
 
-  // ✅ NUEVO PRESUPUESTO
   const openNewDoc = useCallback(async () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -234,7 +230,6 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
     setShowForm(true)
   }, [generarNumeroUnico, resetForm])
 
-  // ✅ EDITAR
   const openEditDoc = (doc: Documento) => {
     setEditingDoc(doc)
     try {
@@ -314,7 +309,6 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
     }
   }
 
-  // ✅ CÁLCULOS CORRECTOS
   const calcularTotalLinea = (item: LineItem) => {
     const cant = Number(item.cantidad) || 0
     const prec = Number(item.precio) || 0
@@ -430,6 +424,83 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
     }
   }
 
+  const renderPDFContent = () => {
+    const totales = calcularTotales()
+    return (
+      <div style={{ background: 'white', padding: '1.2rem', borderRadius: 6, fontFamily: 'Arial, sans-serif', fontSize: '8.5px', lineHeight: '1.5', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', textAlign: 'center' }}>{pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'}</div>
+
+        <div style={{ marginBottom: '10px', fontSize: '8.5px' }}>
+          <div><strong>Número:</strong> {pdfDoc.numero}</div>
+          <div><strong>Fecha:</strong> {new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+          <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '8px' }}>EMISOR:</div>
+            <div style={{ fontSize: '7.5px', lineHeight: '1.6' }}>
+              <p style={{ margin: '2px 0' }}><strong>{profile?.business_name || 'Empresa'}</strong></p>
+              <p style={{ margin: '2px 0' }}>{profile?.owner_name}</p>
+              {profile?.cif && <p style={{ margin: '2px 0' }}><strong>CIF:</strong> {profile.cif}</p>}
+              <p style={{ margin: '2px 0' }}><strong>Email:</strong> {profile?.business_email || '—'}</p>
+              <p style={{ margin: '2px 0' }}><strong>Tel:</strong> {profile?.phone || '—'}</p>
+              <p style={{ margin: '2px 0' }}><strong>Dir:</strong> {profile?.address || '—'}</p>
+              <p style={{ margin: '2px 0' }}>{profile?.cp} {profile?.city}</p>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '8px' }}>CLIENTE:</div>
+            <div style={{ fontSize: '7.5px', lineHeight: '1.6' }}>
+              <p style={{ margin: '2px 0' }}><strong>{pdfDoc.client_name} {pdfDoc.cliente_apellido || ''}</strong></p>
+              {pdfDoc.cliente_cif && <p style={{ margin: '2px 0' }}><strong>CIF:</strong> {pdfDoc.cliente_cif}</p>}
+              <p style={{ margin: '2px 0' }}><strong>Email:</strong> {pdfDoc.cliente_email || '—'}</p>
+              <p style={{ margin: '2px 0' }}><strong>Tel:</strong> {pdfDoc.cliente_telefono || '—'}</p>
+              <p style={{ margin: '2px 0' }}><strong>Dir:</strong> {pdfDoc.cliente_direccion || '—'}</p>
+              <p style={{ margin: '2px 0' }}>{pdfDoc.cliente_cp} {pdfDoc.cliente_ciudad}</p>
+            </div>
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '7.5px' }}>
+          <thead>
+            <tr style={{ background: '#f0f0f0', borderBottom: '1px solid #333' }}>
+              <th style={{ padding: '4px', textAlign: 'left', fontWeight: 'bold', fontSize: '7px' }}>CONCEPTO</th>
+              <th style={{ padding: '4px', textAlign: 'left', fontWeight: 'bold', fontSize: '7px' }}>DESC.</th>
+              <th style={{ padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '7px' }}>CANT.</th>
+              <th style={{ padding: '4px', textAlign: 'right', fontWeight: 'bold', fontSize: '7px' }}>PRECIO</th>
+              <th style={{ padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '7px' }}>IVA</th>
+              <th style={{ padding: '4px', textAlign: 'right', fontWeight: 'bold', fontSize: '7px' }}>TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pdfDoc.items.map((item: LineItem, i: number) => {
+              const calc = calcularTotalLinea(item)
+              return (
+                <tr key={i} style={{ borderBottom: '0.5px solid #eee' }}>
+                  <td style={{ padding: '3px', fontSize: '7.5px' }}>{item.concepto.substring(0, 12)}</td>
+                  <td style={{ padding: '3px', fontSize: '7px', color: '#666' }}>{item.descripcion.substring(0, 8)}</td>
+                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '7.5px' }}>{item.cantidad}</td>
+                  <td style={{ padding: '3px', textAlign: 'right', fontSize: '7.5px' }}>{item.precio.toFixed(2)}€</td>
+                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '7.5px' }}>{item.iva}%</td>
+                  <td style={{ padding: '3px', textAlign: 'right', fontWeight: 'bold', fontSize: '7.5px' }}>{calc.total.toFixed(2)}€</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        <div style={{ textAlign: 'right', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #333', fontSize: '8px' }}>
+          <div style={{ marginBottom: '2px' }}><strong>BASE:</strong> {fmt(totales.base)}</div>
+          <div style={{ marginBottom: '4px' }}><strong>IVA 21%:</strong> {fmt(totales.iva)}</div>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb', marginTop: '6px' }}>TOTAL: {fmt(totales.total)}</div>
+        </div>
+
+        {pdfDoc.metodo_pago && <div style={{ marginBottom: '8px', fontSize: '7.5px' }}><strong>Pago:</strong> {pdfDoc.metodo_pago.toUpperCase()}</div>}
+        {pdfDoc.notas && <div style={{ marginTop: '8px', padding: '8px', background: '#f9f9f9', borderLeft: '2px solid #2563eb', fontSize: '7.5px', whiteSpace: 'pre-wrap', maxHeight: '80px', overflowY: 'auto' }}><strong>Obs:</strong> {pdfDoc.notas}</div>}
+      </div>
+    )
+  }
+
   const generarPDF = (doc?: Documento, type: 'presupuesto' | 'factura' = 'presupuesto') => {
     const docData = doc || {
       numero,
@@ -458,18 +529,15 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
       const totales = calcularTotales()
       const titulo = pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'
 
-      // TÍTULO
       doc.setFontSize(28)
       doc.setFont('helvetica', 'bold')
       doc.text(titulo, 105, 20, { align: 'center' })
 
-      // NÚMERO Y FECHA
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.text(`Número: ${pdfDoc.numero}`, 20, 35)
       doc.text(`Fecha: ${new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}`, 120, 35)
 
-      // EMISOR Y CLIENTE EN LÍNEA
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(10)
       doc.text('EMISOR:', 20, 50)
@@ -479,7 +547,6 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
       doc.setFontSize(9)
       let yPos = 57
 
-      // DATOS EMISOR
       doc.text(`${profile?.business_name || 'Empresa'}`, 20, yPos)
       doc.text(`${pdfDoc.client_name} ${pdfDoc.cliente_apellido || ''}`, 120, yPos)
       yPos += 5
@@ -494,7 +561,7 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
         yPos += 5
       }
 
-      doc.text(`Email: ${profile?.email || ''}`, 20, yPos)
+      doc.text(`Email: ${profile?.business_email || ''}`, 20, yPos)
       doc.text(`Email: ${pdfDoc.cliente_email || '—'}`, 120, yPos)
       yPos += 5
 
@@ -509,7 +576,6 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
       doc.text(`${profile?.cp || ''} ${profile?.city || ''}`, 20, yPos)
       doc.text(`${pdfDoc.cliente_ciudad || '—'}`, 120, yPos)
 
-      // TABLA
       yPos = 100
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(9)
@@ -541,7 +607,6 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
         yPos += 7
       })
 
-      // TOTALES
       yPos += 10
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(10)
@@ -606,27 +671,27 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
 
         {/* FORM MODAL */}
         {showForm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'max(0.5rem, 2vw)', backdropFilter: 'blur(8px)', overflowY: 'auto' }} onClick={() => setShowForm(false)}>
-            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 'min(1000px, 95vw)', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: 'clamp(0.8rem, 2vw, 1.2rem)', borderBottom: '2px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fafafa', zIndex: 10 }}>
-                <h2 style={{ margin: 0, fontSize: 'clamp(1rem, 4vw, 1.1rem)', fontWeight: 700, color: '#1a202c' }}>{editingDoc ? 'Editar' : 'Nuevo'} Presupuesto</h2>
-                <button onClick={() => setShowForm(false)} style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.2rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(8px)', overflowY: 'auto' }} onClick={() => setShowForm(false)}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '1rem', borderBottom: '2px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fafafa', zIndex: 10, flexShrink: 0 }}>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a202c', whiteSpace: 'nowrap' }}>{editingDoc ? 'Editar' : 'Nuevo'} Presupuesto</h2>
+                <button onClick={() => setShowForm(false)} style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.2rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: '1rem' }}>×</button>
               </div>
 
-              <form onSubmit={saveDoc}>
-                <div style={{ padding: 'clamp(1rem, 3vw, 1.5rem)', display: 'flex', flexDirection: 'column', gap: 'clamp(0.8rem, 2vw, 1.2rem)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'clamp(0.5rem, 2vw, 1rem)' }}>
+              <form onSubmit={saveDoc} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem', flex: 1 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.4rem', textTransform: 'uppercase' }}>Número</label>
-                      <input value={numero} disabled style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, background: '#f5f5f5', cursor: 'not-allowed', fontWeight: 600, fontSize: 'clamp(0.8rem, 2vw, 1rem)' }} />
+                      <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Número</label>
+                      <input value={numero} disabled style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, background: '#f5f5f5', cursor: 'not-allowed', fontWeight: 600, fontSize: '.95rem' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.4rem', textTransform: 'uppercase' }}>Fecha</label>
-                      <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: 'clamp(0.8rem, 2vw, 1rem)' }} />
+                      <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Fecha</label>
+                      <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: '.95rem' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.4rem', textTransform: 'uppercase' }}>Estado</label>
-                      <select value={estado} onChange={e => setEstado(e.target.value as any)} style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: 'clamp(0.8rem, 2vw, 1rem)' }}>
+                      <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Estado</label>
+                      <select value={estado} onChange={e => setEstado(e.target.value as any)} style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: '.95rem' }}>
                         <option value="borrador">Borrador</option>
                         <option value="enviado">Enviado</option>
                         <option value="aceptado">Aceptado</option>
@@ -636,8 +701,8 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.4rem', textTransform: 'uppercase' }}>Cliente</label>
-                    <select onChange={e => selectClient(e.target.value)} value={selectedClientId} style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: 'clamp(0.8rem, 2vw, 1rem)' }}>
+                    <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Cliente</label>
+                    <select onChange={e => selectClient(e.target.value)} value={selectedClientId} style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: '.95rem' }}>
                       <option value="">Selecciona…</option>
                       {clientes.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
                       <option value="externo">+ Cliente Externo</option>
@@ -645,7 +710,7 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
                   </div>
 
                   {clienteExterno && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'clamp(0.5rem, 2vw, 0.8rem)', padding: 'clamp(0.8rem, 2vw, 1rem)', background: '#f8f8f8', borderRadius: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '.8rem', padding: '1rem', background: '#f8f8f8', borderRadius: 8 }}>
                       {[
                         { label: 'Nombre *', state: clientName, setState: setClientName },
                         { label: 'Apellido', state: clientApellido, setState: setClientApellido },
@@ -657,74 +722,92 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
                         { label: 'Dirección', state: clientAddress, setState: setClientAddress },
                       ].map((field, i) => (
                         <div key={i}>
-                          <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>{field.label}</label>
-                          <input type={field.type || 'text'} value={field.state} onChange={e => field.setState(e.target.value)} required={field.label.includes('*')} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: 'clamp(0.8rem, 2vw, 0.85rem)' }} />
+                          <label style={{ fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>{field.label}</label>
+                          <input type={field.type || 'text'} value={field.state} onChange={e => field.setState(e.target.value)} required={field.label.includes('*')} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem' }} />
                         </div>
                       ))}
                     </div>
                   )}
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.6rem', textTransform: 'uppercase' }}>Líneas</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '.5rem', padding: '.7rem', background: '#f0f0f0', borderRadius: 6, fontWeight: 700, fontSize: '.7rem', marginBottom: '.6rem' }}>
-                      <div>Concepto</div>
-                      <div>Descripción</div>
-                      <div>Cantidad *</div>
-                      <div>Precio *</div>
-                      <div>IVA</div>
-                      <div>Total</div>
-                    </div>
+                    <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.6rem', textTransform: 'uppercase' }}>Líneas</label>
 
                     {items.map((item, i) => {
                       const calc = calcularTotalLinea(item)
                       return (
-                        <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '.5rem', marginBottom: '.5rem', padding: '.6rem', border: '1px solid #e0e0e0', borderRadius: 6 }}>
-                          <input type="text" placeholder="Concepto" value={item.concepto} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, concepto: e.target.value } : it))} style={{ width: '100%', padding: '.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.8rem', minWidth: 0 }} />
-                          <textarea placeholder="Desc" value={item.descripcion} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, descripcion: e.target.value } : it))} style={{ width: '100%', padding: '.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.8rem', minHeight: '45px', resize: 'vertical', minWidth: 0 }} />
-                          <input type="number" value={item.cantidad || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, cantidad: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.8rem', textAlign: 'center', minWidth: 0, borderColor: !item.cantidad && item.concepto ? '#ef4444' : '#ddd' }} />
-                          <input type="number" value={item.precio || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, precio: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.8rem', textAlign: 'right', minWidth: 0, borderColor: !item.precio && item.concepto ? '#ef4444' : '#ddd' }} />
-                          <select value={item.iva} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, iva: Number(e.target.value) } : it))} style={{ width: '100%', padding: '.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.8rem', minWidth: 0 }}>
-                            <option value={0}>0%</option>
-                            <option value={10}>10%</option>
-                            <option value={15}>15%</option>
-                            <option value={21}>21%</option>
-                          </select>
-                          <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center', minWidth: 0 }}>
-                            <div style={{ flex: 1, padding: '.4rem', background: '#f9f9f9', borderRadius: 4, fontSize: '.8rem', fontWeight: 700, textAlign: 'right', minWidth: 0 }}>{calc.total.toFixed(2)}€</div>
-                            <button type="button" onClick={() => setItems(items.filter((_, idx) => idx !== i))} style={{ padding: '.3rem .4rem', background: '#fee2e2', border: 'none', borderRadius: 4, color: '#991b1b', cursor: 'pointer', fontWeight: 600, fontSize: '.7rem', flexShrink: 0 }}>✕</button>
+                        <div key={i} style={{ marginBottom: '.8rem', padding: '.8rem', border: '1px solid #e0e0e0', borderRadius: 6, background: '#fafafa', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                          <div>
+                            <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Concepto *</label>
+                            <input type="text" placeholder="Ej: Diseño web" value={item.concepto} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, concepto: e.target.value } : it))} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', borderColor: !item.concepto && item.concepto !== undefined ? '#ef4444' : '#ddd' }} />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Descripción</label>
+                            <textarea placeholder="Detalles adicionales" value={item.descripcion} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, descripcion: e.target.value } : it))} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', minHeight: '50px', resize: 'vertical' }} />
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                            <div>
+                              <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Cantidad *</label>
+                              <input type="number" value={item.cantidad || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, cantidad: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', textAlign: 'center', borderColor: !item.cantidad && item.concepto ? '#ef4444' : '#ddd' }} />
+                            </div>
+
+                            <div>
+                              <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Precio *</label>
+                              <input type="number" value={item.precio || ''} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, precio: Number(e.target.value) || 0 } : it))} min={0} step={0.01} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem', textAlign: 'right', borderColor: !item.precio && item.concepto ? '#ef4444' : '#ddd' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.5fr', gap: '.6rem', alignItems: 'flex-end' }}>
+                            <div>
+                              <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>IVA</label>
+                              <select value={item.iva} onChange={e => setItems(items.map((it, idx) => idx === i ? { ...it, iva: Number(e.target.value) } : it))} style={{ width: '100%', padding: '.5rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '.85rem' }}>
+                                <option value={0}>0%</option>
+                                <option value={10}>10%</option>
+                                <option value={15}>15%</option>
+                                <option value={21}>21%</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label style={{ fontSize: '.65rem', fontWeight: 700, color: '#666', marginBottom: '.3rem', display: 'block' }}>Total</label>
+                              <div style={{ padding: '.5rem', background: '#f0f0f0', borderRadius: 4, fontSize: '.85rem', fontWeight: 700, textAlign: 'right' }}>{calc.total.toFixed(2)}€</div>
+                            </div>
+
+                            <button type="button" onClick={() => setItems(items.filter((_, idx) => idx !== i))} style={{ padding: '.5rem .4rem', background: '#fee2e2', border: 'none', borderRadius: 4, color: '#991b1b', cursor: 'pointer', fontWeight: 600, fontSize: '.75rem' }}>✕</button>
                           </div>
                         </div>
                       )
                     })}
 
-                    <button type="button" onClick={() => setItems([...items, { id: String(items.length + 1), concepto: '', descripcion: '', cantidad: 0, precio: 0, iva: 21, descuento: 0 }])} style={{ width: '100%', padding: '.7rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: 'clamp(0.8rem, 2vw, 0.85rem)', fontWeight: 700, cursor: 'pointer' }}>+ Añadir línea</button>
+                    <button type="button" onClick={() => setItems([...items, { id: String(items.length + 1), concepto: '', descripcion: '', cantidad: 0, precio: 0, iva: 21, descuento: 0 }])} style={{ width: '100%', padding: '.8rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.9rem', fontWeight: 700, cursor: 'pointer', marginTop: '.5rem' }}>+ Añadir línea</button>
                   </div>
 
-                  <div style={{ padding: '1rem', background: '#f8f8f8', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', textAlign: 'center' }}>
+                  <div style={{ padding: '1rem', background: '#f8f8f8', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem', textAlign: 'center' }}>
                     <div>
                       <div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>BASE</div>
-                      <div style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)', fontWeight: 700 }}>{fmt(totales.base)}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(totales.base)}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>IVA 21%</div>
-                      <div style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)', fontWeight: 700 }}>{fmt(totales.iva)}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(totales.iva)}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '.7rem', color: '#666', fontWeight: 600, marginBottom: '.3rem' }}>TOTAL</div>
-                      <div style={{ fontSize: 'clamp(1rem, 3vw, 1.2rem)', fontWeight: 900, color: '#2563eb' }}>{fmt(totales.total)}</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#2563eb' }}>{fmt(totales.total)}</div>
                     </div>
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.4rem', textTransform: 'uppercase' }}>Notas</label>
-                    <textarea value={notas} onChange={e => setNotas(e.target.value)} placeholder="Condiciones de pago, observaciones…" rows={3} style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: 'clamp(0.8rem, 2vw, 0.85rem)', resize: 'vertical' }} />
+                    <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Notas</label>
+                    <textarea value={notas} onChange={e => setNotas(e.target.value)} placeholder="Condiciones de pago, observaciones…" rows={3} style={{ width: '100%', padding: '.65rem', border: '1px solid #ddd', borderRadius: 6, fontSize: '.85rem', resize: 'vertical' }} />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '.7rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Método de pago</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#666', marginBottom: '.5rem', textTransform: 'uppercase' }}>Método de pago</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '1rem' }}>
                       {['efectivo', 'tarjeta', 'transferencia', 'al_contado'].map(metodo => (
-                        <label key={metodo} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: 'clamp(0.8rem, 2vw, 0.85rem)' }}>
+                        <label key={metodo} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'pointer', fontSize: '.85rem' }}>
                           <input type="radio" name="metodo" value={metodo} checked={metodoPago === metodo} onChange={e => setMetodoPago(e.target.value)} style={{ cursor: 'pointer' }} />
                           {metodo.charAt(0).toUpperCase() + metodo.slice(1).replace('_', ' ')}
                         </label>
@@ -733,11 +816,11 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
                   </div>
                 </div>
 
-                <div style={{ padding: 'clamp(0.8rem, 2vw, 1rem)', borderTop: '2px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: 'clamp(0.4rem, 1vw, 0.6rem)', background: '#fafafa', position: 'sticky', bottom: 0, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => setShowForm(false)} style={{ padding: 'clamp(0.5rem, 2vw, 0.6rem) clamp(0.8rem, 2vw, 1.2rem)', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 6, fontSize: 'clamp(0.75rem, 2vw, 0.85rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancelar</button>
-                  <button type="button" onClick={() => generarPDF(undefined, 'presupuesto')} style={{ padding: 'clamp(0.5rem, 2vw, 0.6rem) clamp(0.8rem, 2vw, 1.2rem)', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 'clamp(0.75rem, 2vw, 0.85rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>👁️ Vista Pres.</button>
-                  <button type="button" onClick={() => generarPDF(undefined, 'factura')} style={{ padding: 'clamp(0.5rem, 2vw, 0.6rem) clamp(0.8rem, 2vw, 1.2rem)', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 'clamp(0.75rem, 2vw, 0.85rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🧾 Vista Fact.</button>
-                  <button type="submit" disabled={saving} style={{ padding: 'clamp(0.5rem, 2vw, 0.6rem) clamp(0.8rem, 2vw, 1.2rem)', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: 'clamp(0.75rem, 2vw, 0.85rem)', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, whiteSpace: 'nowrap' }}>{saving ? 'Guardando…' : 'Guardar'}</button>
+                <div style={{ padding: '1rem', borderTop: '2px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', background: '#fafafa', position: 'sticky', bottom: 0, flexWrap: 'wrap', flexShrink: 0 }}>
+                  <button type="button" onClick={() => setShowForm(false)} style={{ padding: '0.6rem 1rem', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancelar</button>
+                  <button type="button" onClick={() => generarPDF(undefined, 'presupuesto')} style={{ padding: '0.6rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>👁️ Vista Pres.</button>
+                  <button type="button" onClick={() => generarPDF(undefined, 'factura')} style={{ padding: '0.6rem 1rem', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>🧾 Vista Fact.</button>
+                  <button type="submit" disabled={saving} style={{ padding: '0.6rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, whiteSpace: 'nowrap' }}>{saving ? 'Guardando…' : 'Guardar'}</button>
                 </div>
               </form>
             </div>
@@ -746,134 +829,66 @@ return `PRES-${new Date().getFullYear()}-${String(siguienteNum).padStart(4, '0')
 
         {/* PDF MODAL */}
         {showPDFModal && pdfDoc && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'max(0.5rem, 2vw)', backdropFilter: 'blur(8px)' }} onClick={() => setShowPDFModal(false)}>
-            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 'min(950px, 95vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: 'clamp(0.8rem, 2vw, 1rem)', borderBottom: '2px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: 'clamp(0.9rem, 3vw, 1rem)', fontWeight: 700 }}>{pdfType === 'presupuesto' ? 'Presupuesto' : 'Factura'} - {pdfDoc.numero}</h2>
-                <button onClick={() => setShowPDFModal(false)} style={{ width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.2rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', backdropFilter: 'blur(8px)' }} onClick={() => setShowPDFModal(false)}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '0.8rem', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>{pdfType === 'presupuesto' ? 'Presupuesto' : 'Factura'} - {pdfDoc.numero}</h2>
+                <button onClick={() => setShowPDFModal(false)} style={{ width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.1rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(1rem, 3vw, 2rem)', background: '#f5f5f5' }}>
-                <div style={{ background: 'white', padding: 'clamp(1.5rem, 4vw, 40px)', borderRadius: 8, fontFamily: 'Arial, sans-serif', fontSize: 'clamp(9px, 2vw, 11px)', lineHeight: '1.6', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                  <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 'bold', marginBottom: 'clamp(1rem, 3vw, 30px)', textAlign: 'center' }}>{pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'}</div>
-
-                  <div style={{ marginBottom: 'clamp(1rem, 3vw, 20px)', fontSize: 'clamp(10px, 2vw, 11px)' }}>
-                    <div><strong>Número:</strong> {pdfDoc.numero}</div>
-                    <div><strong>Fecha:</strong> {new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}</div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(1.5rem, 4vw, 40px)', marginBottom: 'clamp(1.5rem, 4vw, 40px)' }}>
-                    <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: 'clamp(0.5rem, 2vw, 10px)', fontSize: 'clamp(10px, 2vw, 11px)' }}>EMISOR:</div>
-                      <div style={{ fontSize: 'clamp(9px, 2vw, 10px)', lineHeight: '1.8' }}>
-                        <p><strong>{profile?.business_name || 'Empresa'}</strong></p>
-                        <p>{profile?.owner_name}</p>
-                        {profile?.cif && <p><strong>CIF:</strong> {profile.cif}</p>}
-                        <p><strong>Email:</strong> {profile?.email || '—'}</p>
-                        <p><strong>Tel:</strong> {profile?.phone || '—'}</p>
-                        <p><strong>Dir:</strong> {profile?.address || '—'}</p>
-                        <p>{profile?.cp} {profile?.city}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: 'clamp(0.5rem, 2vw, 10px)', fontSize: 'clamp(10px, 2vw, 11px)' }}>CLIENTE:</div>
-                      <div style={{ fontSize: 'clamp(9px, 2vw, 10px)', lineHeight: '1.8' }}>
-                        <p><strong>{pdfDoc.client_name} {pdfDoc.cliente_apellido || ''}</strong></p>
-                        {pdfDoc.cliente_cif && <p><strong>CIF:</strong> {pdfDoc.cliente_cif}</p>}
-                        <p><strong>Email:</strong> {pdfDoc.cliente_email || '—'}</p>
-                        <p><strong>Tel:</strong> {pdfDoc.cliente_telefono || '—'}</p>
-                        <p><strong>Dir:</strong> {pdfDoc.cliente_direccion || '—'}</p>
-                        <p>{pdfDoc.cliente_cp} {pdfDoc.cliente_ciudad}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 'clamp(1.5rem, 4vw, 30px)', fontSize: 'clamp(9px, 2vw, 10px)' }}>
-                    <thead>
-                      <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #333' }}>
-                        <th style={{ padding: 'clamp(0.5rem, 1vw, 10px)', textAlign: 'left', fontWeight: 'bold' }}>CONCEPTO</th>
-                        <th style={{ padding: 'clamp(0.5rem, 1vw, 10px)', textAlign: 'left', fontWeight: 'bold' }}>DESCRIPCIÓN</th>
-                        <th style={{ padding: 'clamp(0.5rem, 1vw, 10px)', textAlign: 'center', fontWeight: 'bold' }}>CANTIDAD</th>
-                        <th style={{ padding: 'clamp(0.5rem, 1vw, 10px)', textAlign: 'right', fontWeight: 'bold' }}>PRECIO</th>
-                        <th style={{ padding: 'clamp(0.5rem, 1vw, 10px)', textAlign: 'center', fontWeight: 'bold' }}>IVA</th>
-                        <th style={{ padding: 'clamp(0.5rem, 1vw, 10px)', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pdfDoc.items.map((item: LineItem, i: number) => {
-                        const calc = calcularTotalLinea(item)
-                        return (
-                          <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: 'clamp(0.4rem, 1vw, 8px)' }}>{item.concepto}</td>
-                            <td style={{ padding: 'clamp(0.4rem, 1vw, 8px)', fontSize: 'clamp(8px, 2vw, 9px)', color: '#666' }}>{item.descripcion}</td>
-                            <td style={{ padding: 'clamp(0.4rem, 1vw, 8px)', textAlign: 'center' }}>{item.cantidad}</td>
-                            <td style={{ padding: 'clamp(0.4rem, 1vw, 8px)', textAlign: 'right' }}>{item.precio.toFixed(2)}€</td>
-                            <td style={{ padding: 'clamp(0.4rem, 1vw, 8px)', textAlign: 'center' }}>{item.iva}%</td>
-                            <td style={{ padding: 'clamp(0.4rem, 1vw, 8px)', textAlign: 'right', fontWeight: 'bold' }}>{calc.total.toFixed(2)}€</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-
-                  <div style={{ textAlign: 'right', marginBottom: 'clamp(1.5rem, 4vw, 30px)', paddingBottom: 'clamp(1rem, 2vw, 20px)', borderBottom: '2px solid #333' }}>
-                    <div style={{ marginBottom: 'clamp(0.3rem, 1vw, 8px)', fontSize: 'clamp(10px, 2vw, 11px)' }}><strong>BASE:</strong> {fmt(totales.base)}</div>
-                    <div style={{ marginBottom: 'clamp(0.3rem, 1vw, 8px)', fontSize: 'clamp(10px, 2vw, 11px)' }}><strong>IVA 21%:</strong> {fmt(totales.iva)}</div>
-                    <div style={{ fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: 'bold', color: '#2563eb', marginTop: 'clamp(0.8rem, 2vw, 15px)' }}>TOTAL: {fmt(totales.total)}</div>
-                  </div>
-
-                  {pdfDoc.metodo_pago && <div style={{ marginBottom: 'clamp(0.8rem, 2vw, 15px)', fontSize: 'clamp(9px, 2vw, 10px)' }}><strong>Método de pago:</strong> {pdfDoc.metodo_pago.toUpperCase()}</div>}
-                  {pdfDoc.notas && <div style={{ marginTop: 'clamp(0.8rem, 2vw, 15px)', padding: 'clamp(0.8rem, 2vw, 12px)', background: '#f9f9f9', borderLeft: '4px solid #2563eb', fontSize: 'clamp(9px, 2vw, 10px)', whiteSpace: 'pre-wrap' }}><strong>Observaciones:</strong> {pdfDoc.notas}</div>}
-                </div>
+              <div style={{ padding: '1rem', background: '#f5f5f5', overflowY: 'auto', flex: 1 }}>
+                {renderPDFContent()}
               </div>
 
-              <div style={{ padding: 'clamp(0.8rem, 2vw, 1rem)', borderTop: '2px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: 'clamp(0.4rem, 1vw, 0.6rem)', flexWrap: 'wrap' }}>
-                <button onClick={() => setShowPDFModal(false)} style={{ padding: 'clamp(0.5rem, 2vw, 0.6rem) clamp(0.8rem, 2vw, 1.2rem)', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 6, fontSize: 'clamp(0.75rem, 2vw, 0.85rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cerrar</button>
-                <button onClick={descargarPDF} style={{ padding: 'clamp(0.5rem, 2vw, 0.6rem) clamp(0.8rem, 2vw, 1.2rem)', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 'clamp(0.75rem, 2vw, 0.85rem)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📥 Descargar</button>
+              <div style={{ padding: '0.8rem', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                <button onClick={() => setShowPDFModal(false)} style={{ padding: '0.5rem 0.8rem', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 4, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cerrar</button>
+                <button onClick={descargarPDF} style={{ padding: '0.5rem 0.8rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📥 Descargar</button>
               </div>
             </div>
           </div>
         )}
 
         {/* TABLA */}
-        <div className={styles.card} style={{ padding: 0, marginTop: '2rem', overflowX: 'auto' }}>
-          <table className={styles.tbl} style={{ fontSize: 'clamp(0.75rem, 2vw, 1rem)' }}>
-            <thead>
-              <tr>
-                <th>Número</th>
-                <th>Cliente</th>
-                <th>Fecha</th>
-                <th>Total</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {documentos.map(doc => (
-                <tr key={doc.id}>
-                  <td><strong>{doc.numero}</strong></td>
-                  <td style={{ fontSize: 'clamp(0.7rem, 2vw, 1rem)' }}>{doc.client_name}</td>
-                  <td style={{ color: '#64748b', fontSize: 'clamp(0.7rem, 2vw, 0.875rem)' }}>{new Date(doc.fecha).toLocaleDateString('es-ES')}</td>
-                  <td><strong>{fmt(doc.total)}</strong></td>
-                  <td><span style={{ background: STATUS_BG[doc.estado], color: STATUS_COLOR[doc.estado], padding: '.18rem .55rem', borderRadius: 20, fontSize: 'clamp(0.6rem, 1.5vw, 0.66rem)', fontWeight: 700, textTransform: 'uppercase', display: 'inline-block' }}>{STATUS_LABEL[doc.estado]}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '.2rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                      <button onClick={() => generarPDF(doc, 'presupuesto')} title="Presupuesto" style={{ padding: '.25rem .4rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 4, fontSize: 'clamp(0.65rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer' }}>👁️</button>
-                      <button onClick={() => generarPDF(doc, 'factura')} title="Factura" style={{ padding: '.25rem .4rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 4, fontSize: 'clamp(0.65rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer' }}>🧾</button>
-                      <button onClick={() => openEditDoc(doc)} title="Editar" style={{ padding: '.25rem .4rem', background: '#f3f0ea', color: '#0a0f14', border: 'none', borderRadius: 4, fontSize: 'clamp(0.65rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer' }}>✎</button>
-                      <button onClick={() => deleteDoc(doc.id)} title="Eliminar" style={{ padding: '.25rem .4rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, fontSize: 'clamp(0.65rem, 1.5vw, 0.7rem)', fontWeight: 600, cursor: 'pointer' }}>🗑</button>
-                    </div>
-                  </td>
+        <div className={styles.card} style={{ padding: 0, marginTop: '2rem', overflow: 'hidden' }}>
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table className={styles.tbl} style={{ fontSize: '.85rem', width: '100%', minWidth: '700px' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '0.8rem', textAlign: 'left' }}>Número</th>
+                  <th style={{ padding: '0.8rem', textAlign: 'left' }}>Cliente</th>
+                  <th style={{ padding: '0.8rem', textAlign: 'left' }}>Fecha</th>
+                  <th style={{ padding: '0.8rem', textAlign: 'right' }}>Total</th>
+                  <th style={{ padding: '0.8rem', textAlign: 'center' }}>Estado</th>
+                  <th style={{ padding: '0.8rem', textAlign: 'center' }}>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {documentos.map(doc => (
+                  <tr key={doc.id}>
+                    <td style={{ padding: '0.8rem' }}><strong style={{ fontSize: '.8rem' }}>{doc.numero}</strong></td>
+                    <td style={{ padding: '0.8rem', fontSize: '.8rem' }}>{doc.client_name}</td>
+                    <td style={{ padding: '0.8rem', color: '#64748b', fontSize: '.75rem' }}>{new Date(doc.fecha).toLocaleDateString('es-ES')}</td>
+                    <td style={{ padding: '0.8rem', textAlign: 'right' }}><strong style={{ fontSize: '.85rem' }}>{fmt(doc.total)}</strong></td>
+                    <td style={{ padding: '0.8rem', textAlign: 'center' }}><span style={{ background: STATUS_BG[doc.estado], color: STATUS_COLOR[doc.estado], padding: '.15rem .4rem', borderRadius: 20, fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', display: 'inline-block' }}>{STATUS_LABEL[doc.estado]}</span></td>
+                    <td style={{ padding: '0.8rem', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '.25rem', justifyContent: 'center', flexWrap: 'nowrap' }}>
+                        <button onClick={() => generarPDF(doc, 'presupuesto')} title="Presupuesto" style={{ padding: '.3rem .35rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>👁️</button>
+                        <button onClick={() => generarPDF(doc, 'factura')} title="Factura" style={{ padding: '.3rem .35rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🧾</button>
+                        <button onClick={() => openEditDoc(doc)} title="Editar" style={{ padding: '.3rem .35rem', background: '#f3f0ea', color: '#0a0f14', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>✎</button>
+                        <button onClick={() => deleteDoc(doc.id)} title="Eliminar" style={{ padding: '.3rem .35rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {documentos.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 'clamp(2rem, 5vw, 4rem) 1rem' }}>
-              <div style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', marginBottom: '1rem', opacity: 0.3 }}>📄</div>
-              <div style={{ fontWeight: 700, fontSize: 'clamp(0.9rem, 2vw, 1rem)', marginBottom: '.5rem', color: '#1c2b3a' }}>Sin documentos</div>
-              <button onClick={openNewDoc} className={styles.btnDark} style={{ marginTop: '1rem', background: '#2563eb', padding: 'clamp(0.5rem, 2vw, 0.65rem) clamp(1rem, 3vw, 1.1rem)', fontSize: 'clamp(0.75rem, 2vw, 0.9rem)' }}>+ Nuevo presupuesto</button>
+            <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📄</div>
+              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '.5rem', color: '#1c2b3a' }}>Sin documentos</div>
+              <button onClick={openNewDoc} className={styles.btnDark} style={{ marginTop: '1rem', background: '#2563eb', padding: '0.65rem 1.1rem', fontSize: '.9rem' }}>+ Nuevo presupuesto</button>
             </div>
           )}
         </div>
