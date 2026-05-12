@@ -427,76 +427,76 @@ export default function Documentos() {
   const renderPDFContent = () => {
     const totales = calcularTotales()
     return (
-      <div style={{ background: 'white', padding: '1.2rem', borderRadius: 6, fontFamily: 'Arial, sans-serif', fontSize: '8.5px', lineHeight: '1.5', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', textAlign: 'center' }}>{pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'}</div>
+      <div style={{ background: 'white', padding: '2rem', borderRadius: 6, fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}>
+        <div style={{ fontSize: '26px', fontWeight: 'bold', marginBottom: '18px', textAlign: 'center' }}>{pdfType === 'presupuesto' ? 'PRESUPUESTO' : 'FACTURA'}</div>
 
-        <div style={{ marginBottom: '10px', fontSize: '8.5px' }}>
+        <div style={{ marginBottom: '15px', fontSize: '11px' }}>
           <div><strong>Número:</strong> {pdfDoc.numero}</div>
           <div><strong>Fecha:</strong> {new Date(pdfDoc.fecha).toLocaleDateString('es-ES')}</div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '25px' }}>
           <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '8px' }}>EMISOR:</div>
-            <div style={{ fontSize: '7.5px', lineHeight: '1.6' }}>
-              <p style={{ margin: '2px 0' }}><strong>{profile?.business_name || 'Empresa'}</strong></p>
-              <p style={{ margin: '2px 0' }}>{profile?.owner_name}</p>
-              {profile?.cif && <p style={{ margin: '2px 0' }}><strong>CIF:</strong> {profile.cif}</p>}
-              <p style={{ margin: '2px 0' }}><strong>Email:</strong> {profile?.business_email || '—'}</p>
-              <p style={{ margin: '2px 0' }}><strong>Tel:</strong> {profile?.phone || '—'}</p>
-              <p style={{ margin: '2px 0' }}><strong>Dir:</strong> {profile?.address || '—'}</p>
-              <p style={{ margin: '2px 0' }}>{profile?.cp} {profile?.city}</p>
+            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>EMISOR:</div>
+            <div style={{ fontSize: '10px', lineHeight: '1.8' }}>
+              <p style={{ margin: '3px 0' }}><strong>{profile?.business_name || 'Empresa'}</strong></p>
+              <p style={{ margin: '3px 0' }}>{profile?.owner_name}</p>
+              {profile?.cif && <p style={{ margin: '3px 0' }}><strong>CIF:</strong> {profile.cif}</p>}
+              <p style={{ margin: '3px 0' }}><strong>Email:</strong> {profile?.business_email || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Tel:</strong> {profile?.phone || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Dir:</strong> {profile?.address || '—'}</p>
+              <p style={{ margin: '3px 0' }}>{profile?.cp} {profile?.city}</p>
             </div>
           </div>
           <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '8px' }}>CLIENTE:</div>
-            <div style={{ fontSize: '7.5px', lineHeight: '1.6' }}>
-              <p style={{ margin: '2px 0' }}><strong>{pdfDoc.client_name} {pdfDoc.cliente_apellido || ''}</strong></p>
-              {pdfDoc.cliente_cif && <p style={{ margin: '2px 0' }}><strong>CIF:</strong> {pdfDoc.cliente_cif}</p>}
-              <p style={{ margin: '2px 0' }}><strong>Email:</strong> {pdfDoc.cliente_email || '—'}</p>
-              <p style={{ margin: '2px 0' }}><strong>Tel:</strong> {pdfDoc.cliente_telefono || '—'}</p>
-              <p style={{ margin: '2px 0' }}><strong>Dir:</strong> {pdfDoc.cliente_direccion || '—'}</p>
-              <p style={{ margin: '2px 0' }}>{pdfDoc.cliente_cp} {pdfDoc.cliente_ciudad}</p>
+            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '11px' }}>CLIENTE:</div>
+            <div style={{ fontSize: '10px', lineHeight: '1.8' }}>
+              <p style={{ margin: '3px 0' }}><strong>{pdfDoc.client_name} {pdfDoc.cliente_apellido || ''}</strong></p>
+              {pdfDoc.cliente_cif && <p style={{ margin: '3px 0' }}><strong>CIF:</strong> {pdfDoc.cliente_cif}</p>}
+              <p style={{ margin: '3px 0' }}><strong>Email:</strong> {pdfDoc.cliente_email || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Tel:</strong> {pdfDoc.cliente_telefono || '—'}</p>
+              <p style={{ margin: '3px 0' }}><strong>Dir:</strong> {pdfDoc.cliente_direccion || '—'}</p>
+              <p style={{ margin: '3px 0' }}>{pdfDoc.cliente_cp} {pdfDoc.cliente_ciudad}</p>
             </div>
           </div>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '7.5px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '10px' }}>
           <thead>
-            <tr style={{ background: '#f0f0f0', borderBottom: '1px solid #333' }}>
-              <th style={{ padding: '4px', textAlign: 'left', fontWeight: 'bold', fontSize: '7px' }}>CONCEPTO</th>
-              <th style={{ padding: '4px', textAlign: 'left', fontWeight: 'bold', fontSize: '7px' }}>DESC.</th>
-              <th style={{ padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '7px' }}>CANT.</th>
-              <th style={{ padding: '4px', textAlign: 'right', fontWeight: 'bold', fontSize: '7px' }}>PRECIO</th>
-              <th style={{ padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '7px' }}>IVA</th>
-              <th style={{ padding: '4px', textAlign: 'right', fontWeight: 'bold', fontSize: '7px' }}>TOTAL</th>
+            <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #333' }}>
+              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>CONCEPTO</th>
+              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>DESCRIPCIÓN</th>
+              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>CANTIDAD</th>
+              <th style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>PRECIO</th>
+              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>IVA</th>
+              <th style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</th>
             </tr>
           </thead>
           <tbody>
             {pdfDoc.items.map((item: LineItem, i: number) => {
               const calc = calcularTotalLinea(item)
               return (
-                <tr key={i} style={{ borderBottom: '0.5px solid #eee' }}>
-                  <td style={{ padding: '3px', fontSize: '7.5px' }}>{item.concepto.substring(0, 12)}</td>
-                  <td style={{ padding: '3px', fontSize: '7px', color: '#666' }}>{item.descripcion.substring(0, 8)}</td>
-                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '7.5px' }}>{item.cantidad}</td>
-                  <td style={{ padding: '3px', textAlign: 'right', fontSize: '7.5px' }}>{item.precio.toFixed(2)}€</td>
-                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '7.5px' }}>{item.iva}%</td>
-                  <td style={{ padding: '3px', textAlign: 'right', fontWeight: 'bold', fontSize: '7.5px' }}>{calc.total.toFixed(2)}€</td>
+                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '8px' }}>{item.concepto}</td>
+                  <td style={{ padding: '8px', fontSize: '9px', color: '#666' }}>{item.descripcion}</td>
+                  <td style={{ padding: '8px', textAlign: 'center' }}>{item.cantidad}</td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>{item.precio.toFixed(2)}€</td>
+                  <td style={{ padding: '8px', textAlign: 'center' }}>{item.iva}%</td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>{calc.total.toFixed(2)}€</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
 
-        <div style={{ textAlign: 'right', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #333', fontSize: '8px' }}>
-          <div style={{ marginBottom: '2px' }}><strong>BASE:</strong> {fmt(totales.base)}</div>
-          <div style={{ marginBottom: '4px' }}><strong>IVA 21%:</strong> {fmt(totales.iva)}</div>
-          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb', marginTop: '6px' }}>TOTAL: {fmt(totales.total)}</div>
+        <div style={{ textAlign: 'right', marginBottom: '20px', paddingBottom: '15px', borderBottom: '2px solid #333' }}>
+          <div style={{ marginBottom: '5px', fontSize: '11px' }}><strong>BASE:</strong> {fmt(totales.base)}</div>
+          <div style={{ marginBottom: '8px', fontSize: '11px' }}><strong>IVA 21%:</strong> {fmt(totales.iva)}</div>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb', marginTop: '12px' }}>TOTAL: {fmt(totales.total)}</div>
         </div>
 
-        {pdfDoc.metodo_pago && <div style={{ marginBottom: '8px', fontSize: '7.5px' }}><strong>Pago:</strong> {pdfDoc.metodo_pago.toUpperCase()}</div>}
-        {pdfDoc.notas && <div style={{ marginTop: '8px', padding: '8px', background: '#f9f9f9', borderLeft: '2px solid #2563eb', fontSize: '7.5px', whiteSpace: 'pre-wrap', maxHeight: '80px', overflowY: 'auto' }}><strong>Obs:</strong> {pdfDoc.notas}</div>}
+        {pdfDoc.metodo_pago && <div style={{ marginBottom: '12px', fontSize: '10px' }}><strong>Método de pago:</strong> {pdfDoc.metodo_pago.toUpperCase()}</div>}
+        {pdfDoc.notas && <div style={{ marginTop: '12px', padding: '12px', background: '#f9f9f9', borderLeft: '4px solid #2563eb', fontSize: '10px', whiteSpace: 'pre-wrap' }}><strong>Observaciones:</strong> {pdfDoc.notas}</div>}
       </div>
     )
   }
@@ -827,62 +827,70 @@ export default function Documentos() {
           </div>
         )}
 
-        {/* PDF MODAL */}
+        {/* PDF MODAL - ENORME */}
         {showPDFModal && pdfDoc && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', backdropFilter: 'blur(8px)' }} onClick={() => setShowPDFModal(false)}>
-            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: '0.8rem', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>{pdfType === 'presupuesto' ? 'Presupuesto' : 'Factura'} - {pdfDoc.numero}</h2>
-                <button onClick={() => setShowPDFModal(false)} style={{ width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.1rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,20,.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', backdropFilter: 'blur(8px)' }} onClick={() => setShowPDFModal(false)}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '99%', height: '98vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '1rem', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#fafafa' }}>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{pdfType === 'presupuesto' ? 'Presupuesto' : 'Factura'} - {pdfDoc.numero}</h2>
+                <button onClick={() => setShowPDFModal(false)} style={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: '1.3rem', color: '#999', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>×</button>
               </div>
 
-              <div style={{ padding: '1rem', background: '#f5f5f5', overflowY: 'auto', flex: 1 }}>
+              <div style={{ padding: '2rem', background: '#f5f5f5', overflowY: 'auto', flex: 1 }}>
                 {renderPDFContent()}
               </div>
 
-              <div style={{ padding: '0.8rem', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
-                <button onClick={() => setShowPDFModal(false)} style={{ padding: '0.5rem 0.8rem', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 4, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cerrar</button>
-                <button onClick={descargarPDF} style={{ padding: '0.5rem 0.8rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📥 Descargar</button>
+              <div style={{ padding: '1rem', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', flexWrap: 'wrap', flexShrink: 0, background: '#fafafa' }}>
+                <button onClick={() => setShowPDFModal(false)} style={{ padding: '0.7rem 1.2rem', background: 'transparent', color: '#333', border: '1px solid #ddd', borderRadius: 6, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Cerrar</button>
+                <button onClick={descargarPDF} style={{ padding: '0.7rem 1.2rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>📥 Descargar</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* TABLA */}
+        {/* TABLA - MÓVIL: CÓDIGO, CLIENTE, ESTADO, FECHA */}
         <div className={styles.card} style={{ padding: 0, marginTop: '2rem', overflow: 'hidden' }}>
-          <div style={{ width: '100%', overflowX: 'auto' }}>
-            <table className={styles.tbl} style={{ fontSize: '.85rem', width: '100%', minWidth: '700px' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '0.8rem', textAlign: 'left' }}>Número</th>
-                  <th style={{ padding: '0.8rem', textAlign: 'left' }}>Cliente</th>
-                  <th style={{ padding: '0.8rem', textAlign: 'left' }}>Fecha</th>
-                  <th style={{ padding: '0.8rem', textAlign: 'right' }}>Total</th>
-                  <th style={{ padding: '0.8rem', textAlign: 'center' }}>Estado</th>
-                  <th style={{ padding: '0.8rem', textAlign: 'center' }}>Acciones</th>
+          <table className={styles.tbl} style={{ fontSize: '.9rem', width: '100%' }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>CÓDIGO</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>CLIENTE</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>FECHA</th>
+                <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>ESTADO</th>
+                <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '.75rem', fontWeight: 700, color: '#666' }}>ACCIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documentos.map(doc => (
+                <tr key={doc.id} onClick={() => openEditDoc(doc)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => (e.currentTarget.style.background = '#f9f9f9')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <td style={{ padding: '0.75rem' }}>
+                    <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#1a202c' }}>
+                      PRES-{doc.numero.split('-')[2]}
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.75rem', fontSize: '.8rem', color: '#333' }}>
+                    {doc.client_name}
+                  </td>
+                  <td style={{ padding: '0.75rem', fontSize: '.75rem', color: '#666' }}>
+                    {new Date(doc.fecha).toLocaleDateString('es-ES')}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                    <span style={{ background: STATUS_BG[doc.estado], color: STATUS_COLOR[doc.estado], padding: '.2rem .5rem', borderRadius: 20, fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', display: 'inline-block' }}>
+                      {STATUS_LABEL[doc.estado]}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '.25rem', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+                      <button onClick={() => generarPDF(doc, 'presupuesto')} title="Presupuesto" style={{ padding: '.3rem .35rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>👁️</button>
+                      <button onClick={() => generarPDF(doc, 'factura')} title="Factura" style={{ padding: '.3rem .35rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🧾</button>
+                      <button onClick={() => openEditDoc(doc)} title="Editar" style={{ padding: '.3rem .35rem', background: '#f3f0ea', color: '#0a0f14', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>✎</button>
+                      <button onClick={() => deleteDoc(doc.id)} title="Eliminar" style={{ padding: '.3rem .35rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🗑</button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {documentos.map(doc => (
-                  <tr key={doc.id}>
-                    <td style={{ padding: '0.8rem' }}><strong style={{ fontSize: '.8rem' }}>{doc.numero}</strong></td>
-                    <td style={{ padding: '0.8rem', fontSize: '.8rem' }}>{doc.client_name}</td>
-                    <td style={{ padding: '0.8rem', color: '#64748b', fontSize: '.75rem' }}>{new Date(doc.fecha).toLocaleDateString('es-ES')}</td>
-                    <td style={{ padding: '0.8rem', textAlign: 'right' }}><strong style={{ fontSize: '.85rem' }}>{fmt(doc.total)}</strong></td>
-                    <td style={{ padding: '0.8rem', textAlign: 'center' }}><span style={{ background: STATUS_BG[doc.estado], color: STATUS_COLOR[doc.estado], padding: '.15rem .4rem', borderRadius: 20, fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', display: 'inline-block' }}>{STATUS_LABEL[doc.estado]}</span></td>
-                    <td style={{ padding: '0.8rem', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '.25rem', justifyContent: 'center', flexWrap: 'nowrap' }}>
-                        <button onClick={() => generarPDF(doc, 'presupuesto')} title="Presupuesto" style={{ padding: '.3rem .35rem', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>👁️</button>
-                        <button onClick={() => generarPDF(doc, 'factura')} title="Factura" style={{ padding: '.3rem .35rem', background: '#e8d5f2', color: '#7c3aed', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🧾</button>
-                        <button onClick={() => openEditDoc(doc)} title="Editar" style={{ padding: '.3rem .35rem', background: '#f3f0ea', color: '#0a0f14', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>✎</button>
-                        <button onClick={() => deleteDoc(doc.id)} title="Eliminar" style={{ padding: '.3rem .35rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 3, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer', flex: '0 0 auto' }}>🗑</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
 
           {documentos.length === 0 && (
             <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
