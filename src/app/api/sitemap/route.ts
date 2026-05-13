@@ -4,9 +4,9 @@ export async function GET() {
 
   // Páginas estáticas principales
   const staticPages = [
-    { url: '/', lastmod: new Date().toISOString().split('T')[0], priority: 1.0 },
-    { url: '/precios', lastmod: new Date().toISOString().split('T')[0], priority: 0.9 },
-    { url: '/blog', lastmod: new Date().toISOString().split('T')[0], priority: 0.8 },
+    { url: '/landing', lastmod: new Date().toISOString().split('T')[0], priority: 1.0 },
+    { url: '/dashboard', lastmod: new Date().toISOString().split('T')[0], priority: 0.9 },
+    { url: '/clientes', lastmod: new Date().toISOString().split('T')[0], priority: 0.8 },
   ];
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
