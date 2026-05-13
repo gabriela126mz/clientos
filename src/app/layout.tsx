@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   verification: {
-    google: "dDztqwVwtx8fmwINC0sNlN6eYNIXhumYuR"
+    google: "dDztqwVwtx8fmwINC0sNiN6eYNlXhumYuRPYHyL8lig"
   },
   title: 'Emprenix | CRM + Agenda + Facturación para Autónomos',
   description: 'Software todo-en-uno para fontaneros, electricistas y autónomos en España. Gestión de clientes, agenda, facturación y web pública. Prueba gratis 14 días.',
