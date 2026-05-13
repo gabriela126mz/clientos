@@ -1,0 +1,7 @@
+Allow: /
+Disallow: /dashboard
+Disallow: /register
+Disallow: /forgot
+Disallow: /api/
+
+Sitemap: https://emprenix.com/api/sitemap
