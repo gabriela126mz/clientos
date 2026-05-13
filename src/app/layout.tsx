@@ -1,55 +1,58 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next'
 import { AuthProvider } from '@/lib/context'
 import './globals.css'
 
 export const metadata: Metadata = {
-  verification: {
-    google: "dDztqwVwtx8fmwINC0sNiN6eYNlXhumYuRPYHyL8lig"
-  },
-  title: 'Emprenix | CRM + Agenda + Facturación para Autónomos',
-  description: 'Software todo-en-uno para fontaneros, electricistas y autónomos en España. Gestión de clientes, agenda, facturación y web pública. Prueba gratis 14 días.',
-  keywords: 'CRM autónomos, software gestión clientes, facturación online, agenda citas',
   metadataBase: new URL('https://emprenix.com'),
+
+  verification: {
+    google: 'dDztqwVwtx8fmwINC0sNiN6eYNlXhumYuRPYHyL8lig',
+  },
+
+  title: 'Emprenix — Crea tu web profesional y consigue más clientes',
+
+  description:
+    'Crea tu propia web profesional y organiza clientes, citas, presupuestos y facturas desde un solo lugar. La forma más fácil de dejar de parecer un negocio improvisado.',
+
+  keywords:
+    'crear web profesional, web para autónomos, CRM autónomos, agenda citas, presupuestos online, facturación autónomos, negocios de servicios',
+
   robots: {
     index: true,
     follow: true,
   },
+
+  alternates: {
+    canonical: 'https://emprenix.com',
+  },
+
   openGraph: {
-    title: 'Emprenix',
-    description: 'CRM + Agenda + Facturación para Autónomos en España',
+    title: 'Deja de parecer un negocio improvisado.',
+    description:
+      'Crea tu propia web profesional y organiza tu negocio desde un solo lugar.',
     url: 'https://emprenix.com',
     siteName: 'Emprenix',
     type: 'website',
     locale: 'es_ES',
-    images: [
-      {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Emprenix - Software para autónomos',
-        type: 'image/jpeg',
-      }
-    ],
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Emprenix',
-    description: 'CRM + Agenda + Facturación para Autónomos',
-  },
-  alternates: {
-    canonical: 'https://emprenix.com',
-  }
-};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+  twitter: {
+    card: 'summary',
+    title: 'Deja de parecer un negocio improvisado.',
+    description:
+      'Web profesional + clientes + citas + presupuestos. Todo desde un solo lugar.',
+  },
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="es">
-      <head>
-      </head>
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )
