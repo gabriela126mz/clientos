@@ -1,10 +1,17 @@
 'use client'
 
+import type { Metadata } from 'next'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import styles from './page.module.css'
+
+export const metadata: Metadata = {
+  title: 'Emprenix — Crea tu web profesional y consigue más clientes',
+  description:
+    'Crea tu propia web profesional y gestiona clientes, citas, presupuestos y facturas desde un solo lugar. La forma más fácil de organizar y hacer crecer tu negocio.',
+}
 
 const supabase = createClient()
-import styles from './page.module.css'
 
 function clearSupabaseStorage() {
   Object.keys(localStorage).forEach((key) => {
@@ -73,27 +80,27 @@ export default function LoginPage() {
           </div>
 
           <h1 className={styles.tagline}>
-            Menos papeleo.<br />
-            Más <em>clientes</em>.
+            Crea tu web.<br />
+            Consigue <em>clientes</em>.
           </h1>
 
           <p className={styles.taglineSub}>
-            CRM + agenda + presupuestos + web propia. Todo en uno para emprendedores sin tiempo.
+            Tu web profesional, clientes, citas, presupuestos y facturas en un solo lugar.
           </p>
         </div>
 
         <div className={styles.pills}>
-          <span>✓ Web propia</span>
-          <span>✓ CRM clientes</span>
-          <span>✓ Presupuesto</span>
-          <span>✓ Factura</span>
+          <span>✓ Web profesional</span>
+          <span>✓ Clientes</span>
+          <span>✓ Agenda</span>
+          <span>✓ Presupuestos</span>
         </div>
       </section>
 
       <section className={styles.authMain}>
         <form className={styles.authForm} onSubmit={handleLogin}>
           <h2>Bienvenido</h2>
-          <p className={styles.lead}>Inicia sesión para gestionar tu negocio.</p>
+          <p className={styles.lead}>Gestiona tu negocio desde un solo lugar.</p>
 
           {infoMsg && (
             <div style={{
