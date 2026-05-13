@@ -1,6 +1,6 @@
 // src/app/landing/page.tsx
 import { Metadata } from 'next';
-
+import styles from '../landing.css'
 export const metadata: Metadata = {
   title: 'Emprenix | CRM + Agenda + Facturación para Autónomos en España',
   description: 'Software todo-en-uno para fontaneros, electricistas y autónomos. CRM, Agenda, Facturación y Web pública. Prueba gratis 14 días. ¡Transforma tu negocio ahora!',
