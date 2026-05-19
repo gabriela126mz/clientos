@@ -1,29 +1,29 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
+import { createClient } from '@supabase/supabase-js'
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    if (!process.env.STRIPE_PRICE_ID) {
-      return NextResponse.json(
-        { error: 'Falta STRIPE_PRICE_ID en variables de entorno' },
-        { status: 500 }
-      )
-    }
 
-    if (!process.env.NEXT_PUBLIC_SITE_URL) {
+    const body = await req.json()
+    const userId = body.userId
+    const email = body.email
+
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Falta NEXT_PUBLIC_SITE_URL en variables de entorno' },
-        { status: 500 }
+        { error: 'No user id' },
+        { status: 400 }
       )
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      payment_method_types: ['card'],
+
+      customer_email: email,
 
       line_items: [
         {
-          price: process.env.STRIPE_PRICE_ID,
+          price: process.env.STRIPE_PRICE_ID!,
           quantity: 1,
         },
       ],
@@ -32,14 +32,25 @@ export async function POST() {
         trial_period_days: 7,
       },
 
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?canceled=true`,
+      metadata: {
+        user_id: userId,
+      },
+
+      success_url:
+        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?payment=success`,
+
+      cancel_url:
+        `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?payment=cancel`,
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({
+      url: session.url,
+    })
+
   } catch (err: any) {
+
     return NextResponse.json(
-      { error: err.message || 'Error creando checkout' },
+      { error: err.message },
       { status: 500 }
     )
   }

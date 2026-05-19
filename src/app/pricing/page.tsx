@@ -1,34 +1,45 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
 
 export default function PricingPage() {
   const [loading, setLoading] = useState(false)
 
-  const handleCheckout = async () => {
-    setLoading(true)
+ const handleCheckout = async () => {
+  setLoading(true)
 
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-      })
+  try {
+    const userRes = await supabase.auth.getUser()
 
-      const data = await res.json()
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userRes.data.user?.id,
+        email: userRes.data.user?.email,
+      }),
+    })
 
-      if (!res.ok) {
-        alert(data.error || 'Error iniciando pago')
-        setLoading(false)
-        return
-      }
+    const data = await res.json()
 
-      window.location.href = data.url
-    } catch (err) {
-      console.error(err)
-      alert('Error conectando con Stripe')
+    if (!res.ok) {
+      alert(data.error || 'Error iniciando pago')
       setLoading(false)
+      return
     }
-  }
 
+    window.location.href = data.url
+  } catch (err) {
+    console.error(err)
+    alert('Error conectando con Stripe')
+    setLoading(false)
+  }
+}
   return (
     <main
       style={{
