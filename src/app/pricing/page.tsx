@@ -1,8 +1,13 @@
 'use client'
 
+import { useState } from 'react'
+
 export default function PricingPage() {
+  const [loading, setLoading] = useState(false)
 
   const handleCheckout = async () => {
+    setLoading(true)
+
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -10,12 +15,17 @@ export default function PricingPage() {
 
       const data = await res.json()
 
-      if (data.url) {
-        window.location.href = data.url
+      if (!res.ok) {
+        alert(data.error || 'Error iniciando pago')
+        setLoading(false)
+        return
       }
+
+      window.location.href = data.url
     } catch (err) {
       console.error(err)
-      alert('Error iniciando pago')
+      alert('Error conectando con Stripe')
+      setLoading(false)
     }
   }
 
@@ -26,47 +36,50 @@ export default function PricingPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: 'Arial',
         background: '#f8fafc',
+        fontFamily: 'Arial, sans-serif',
+        padding: '2rem',
       }}
     >
-      <div
+      <section
         style={{
-          background: '#fff',
-          padding: '3rem',
-          borderRadius: '20px',
-          boxShadow: '0 10px 40px rgba(0,0,0,.08)',
-          maxWidth: '450px',
           width: '100%',
+          maxWidth: 460,
+          background: '#fff',
+          borderRadius: 24,
+          padding: '3rem 2rem',
           textAlign: 'center',
+          boxShadow: '0 20px 60px rgba(15,23,42,.12)',
+          border: '1px solid #e5e7eb',
         }}
       >
         <h1
           style={{
-            fontSize: '2.5rem',
-            fontWeight: '900',
-            marginBottom: '.5rem',
+            fontSize: '2.4rem',
+            fontWeight: 900,
+            margin: 0,
+            color: '#0f172a',
           }}
         >
-          Emprenix
+          Emprenix Pro
         </h1>
 
         <p
           style={{
             color: '#64748b',
-            marginBottom: '2rem',
+            margin: '1rem 0 2rem',
             lineHeight: 1.5,
           }}
         >
-          Tu web profesional + clientes + agenda + presupuestos
-          desde un solo lugar.
+          Crea tu web profesional y organiza clientes, citas,
+          presupuestos y facturas desde un solo lugar.
         </p>
 
         <div
           style={{
             fontSize: '3rem',
-            fontWeight: '900',
-            marginBottom: '.2rem',
+            fontWeight: 900,
+            color: '#0f172a',
           }}
         >
           34,99€
@@ -74,6 +87,7 @@ export default function PricingPage() {
             style={{
               fontSize: '1rem',
               color: '#64748b',
+              fontWeight: 700,
             }}
           >
             /mes
@@ -83,8 +97,8 @@ export default function PricingPage() {
         <p
           style={{
             color: '#16a34a',
-            fontWeight: '700',
-            marginBottom: '2rem',
+            fontWeight: 800,
+            margin: '.5rem 0 2rem',
           }}
         >
           7 días gratis
@@ -92,19 +106,21 @@ export default function PricingPage() {
 
         <button
           onClick={handleCheckout}
+          disabled={loading}
           style={{
             width: '100%',
             padding: '1rem',
             border: 'none',
-            borderRadius: '12px',
+            borderRadius: 14,
             background: '#111827',
             color: '#fff',
             fontSize: '1rem',
-            fontWeight: '700',
-            cursor: 'pointer',
+            fontWeight: 800,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1,
           }}
         >
-          Empezar ahora
+          {loading ? 'Abriendo Stripe…' : 'Empezar prueba gratis'}
         </button>
 
         <p
@@ -114,9 +130,9 @@ export default function PricingPage() {
             color: '#94a3b8',
           }}
         >
-          Cancela cuando quieras.
+          Cancela cuando quieras. Pago seguro con Stripe.
         </p>
-      </div>
+      </section>
     </main>
   )
 }
